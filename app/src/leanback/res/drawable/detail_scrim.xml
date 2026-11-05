@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 详情页遮罩：左侧纯黑渐隐到右侧（剧照露出），底部再加一层渐隐，保证选集文字清楚 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <gradient
+                android:angle="0"
+                android:centerColor="#CC0B0B0B"
+                android:centerX="0.45"
+                android:endColor="#330B0B0B"
+                android:startColor="#FF0B0B0B" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <gradient
+                android:angle="90"
+                android:centerColor="#800B0B0B"
+                android:centerY="0.3"
+                android:endColor="#000B0B0B"
+                android:startColor="#F20B0B0B" />
+        </shape>
+    </item>
+</layer-list>

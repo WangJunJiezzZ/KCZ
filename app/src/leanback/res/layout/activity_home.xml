@@ -11,16 +11,26 @@
     <FrameLayout
         android:id="@+id/billboard"
         android:layout_width="match_parent"
-        android:layout_height="300dp">
+        android:layout_height="420dp">
 
-        <!-- 氛围背景：当前焦点影片海报放大（Android 12+ 会做模糊） -->
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/backdrop"
-            android:layout_width="match_parent"
+        <!-- 背景剧照：当前选中影片的图片，清晰铺在右侧（和 HTML 设计稿一致），延伸到第一行海报后面 -->
+        <FrameLayout
+            android:layout_width="740dp"
             android:layout_height="match_parent"
-            android:layout_gravity="end"
-            android:alpha="0.75"
-            android:scaleType="centerCrop" />
+            android:layout_gravity="end">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/backdrop"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop" />
+
+            <!-- 剧照自己的左边缘：从纯黑渐变到透明，和左侧黑色区域无缝衔接 -->
+            <View
+                android:layout_width="380dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/home_scrim_edge" />
+        </FrameLayout>
 
         <!-- 清晰海报 -->
         <com.google.android.material.imageview.ShapeableImageView
@@ -35,17 +45,18 @@
             android:visibility="invisible"
             app:shapeAppearanceOverlay="@style/HomeCardShape" />
 
+        <!-- 底部渐隐：剧照底部融进黑色背景 -->
         <View
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="start"
-            android:background="@drawable/home_scrim_left" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="160dp"
+            android:layout_height="240dp"
             android:layout_gravity="bottom"
             android:background="@drawable/home_scrim_bottom" />
+
+        <!-- 顶部轻微压暗：保证右上角时钟、源名称清楚 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="90dp"
+            android:background="@drawable/home_scrim_top" />
 
         <!-- 文字信息 -->
         <LinearLayout

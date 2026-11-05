@@ -3,8 +3,11 @@ package com.fongmi.android.tv.ui.activity;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
@@ -271,6 +274,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
     @Override
     protected void initView(Bundle savedInstanceState) {
         super.initView(savedInstanceState);
+        initDetailBackdrop();
         mFrameParams = mBinding.video.getLayoutParams();
         mClock = Clock.create(mBinding.widget.clock);
         mKeyDown = CustomKeyDownVod.create(this);
@@ -561,6 +565,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         mBinding.video.requestFocus();
         App.removeCallbacks(mR4);
         setArtwork(item.getPic());
+        showDetailBackdrop(item.getName(), item.getBackdrop());
         checkKeepImg();
         setText(item);
         updateKeep();
@@ -578,7 +583,24 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         if (!name.isEmpty()) mBinding.name.setText(name);
         if (!name.isEmpty()) setPartAdapter();
         if (!pic.isEmpty()) setArtwork();
+        if (!pic.isEmpty()) showDetailBackdrop(name, pic);
         updateKeep();
+    }
+
+    // ===== 二次开发：奈飞风格详情页背景 =====
+
+    @Override
+    protected boolean customWall() {
+        return false;
+    }
+
+    private void initDetailBackdrop() {
+        showDetailBackdrop(getName(), getPic());
+    }
+
+    private void showDetailBackdrop(String name, String pic) {
+        if (pic == null || pic.isEmpty()) return;
+        ImgUtil.load(name, pic, mBinding.detailBackdrop);
     }
 
     @Override

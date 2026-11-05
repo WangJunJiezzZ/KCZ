@@ -4,7 +4,22 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/progressLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/home_bg">
+
+    <!-- 二次开发：奈飞风格详情页背景 = 当前影片剧照清晰铺在右侧 + 左侧/底部渐隐 -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/detailBackdrop"
+        android:layout_width="740dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:id="@+id/detailScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/detail_scrim" />
 
     <FrameLayout
         android:id="@+id/video"

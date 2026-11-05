@@ -44,6 +44,10 @@ public class Vod implements Parcelable, Diffable<Vod> {
     @Element(name = "pic", required = false)
     @SerializedName("vod_pic")
     private String vodPic;
+    // 二次开发：可选的横版剧照（奈飞风格大图背景用），源不提供时退回 vod_pic
+    @Element(name = "backdrop", required = false)
+    @SerializedName("vod_backdrop")
+    private String vodBackdrop;
     @Element(name = "note", required = false)
     @SerializedName("vod_remarks")
     private String vodRemarks;
@@ -145,6 +149,11 @@ public class Vod implements Parcelable, Diffable<Vod> {
 
     public String getPic() {
         return TextUtils.isEmpty(vodPic) ? "" : vodPic.trim();
+    }
+
+    /** 大图背景：优先横版剧照 vod_backdrop，没有则用海报 vod_pic */
+    public String getBackdrop() {
+        return TextUtils.isEmpty(vodBackdrop) ? getPic() : vodBackdrop.trim();
     }
 
     public void setPic(String vodPic) {

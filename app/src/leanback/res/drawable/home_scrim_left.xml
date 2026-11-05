@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 大图左侧渐隐（全宽）：左侧 40% 基本是纯黑，放文字；向右逐渐露出背景图 -->
+<!-- 大图左侧渐隐：左边纯黑（放文字），中段半透明，右端完全透明露出剧照 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
         android:angle="0"
         android:centerColor="#D90B0B0B"
-        android:centerX="0.42"
-        android:endColor="#1A0B0B0B"
+        android:centerX="0.55"
+        android:endColor="#000B0B0B"
         android:startColor="#FF0B0B0B" />
 </shape>

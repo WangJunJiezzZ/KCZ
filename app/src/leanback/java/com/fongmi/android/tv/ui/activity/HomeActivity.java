@@ -26,6 +26,9 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.bumptech.glide.request.transition.DrawableCrossFadeFactory;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
@@ -164,9 +167,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         return false;
     }
 
+    // 奈飞效果：选中影片的图片清晰铺满右侧，左侧和底部由遮罩渐隐到黑色（不做模糊）
     private void setBillboardEffect() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) mBinding.backdrop.setRenderEffect(RenderEffect.createBlurEffect(36, 36, Shader.TileMode.CLAMP));
-        else mBinding.backdrop.setAlpha(0.35f);
+        mBinding.backdrop.setAlpha(1f);
+        mBinding.keyart.setVisibility(View.GONE);
     }
 
     private void setRailExpanded(boolean expanded) {
@@ -180,7 +184,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public void onFocus(Vod item) {
         String meta = joinMeta(item.getYear(), item.getArea(), item.getTypeName(), item.getRemarks());
-        showBillboard(getHome().getName(), item.getName(), meta, item.getContent(), item.getPic());
+        showBillboard(getHome().getName(), item.getName(), meta, item.getContent(), item.getBackdrop());
     }
 
     @Override
@@ -193,18 +197,35 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private void showBillboard(String kicker, String name, String meta, String desc, String pic) {
         App.removeCallbacks(mBillboardTask);
         mBillboardTask = () -> {
-            mBinding.kicker.setText(kicker);
-            mBinding.billTitle.setText(name);
-            mBinding.billMeta.setText(meta);
-            mBinding.billMeta.setVisibility(TextUtils.isEmpty(meta) ? View.GONE : View.VISIBLE);
+            if (name.equals(mBinding.billTitle.getText().toString())) return;
             String text = desc == null ? "" : desc.replaceAll("<[^>]+>", "").replaceAll("\\s+", " ").trim();
-            mBinding.billDesc.setText(text);
-            mBinding.billDesc.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
-            mBinding.keyart.setVisibility(View.VISIBLE);
-            ImgUtil.load(name, pic, mBinding.keyart);
-            ImgUtil.load(name, pic, mBinding.backdrop);
+            // 文字：淡出 + 左移 → 换内容 → 淡入归位（和 HTML 设计稿一致的过渡）
+            View info = (View) mBinding.billTitle.getParent();
+            info.animate().cancel();
+            info.animate().alpha(0f).translationX(-ResUtil.dp2px(12)).setDuration(140).withEndAction(() -> {
+                mBinding.kicker.setText(kicker);
+                mBinding.billTitle.setText(name);
+                mBinding.billMeta.setText(meta);
+                mBinding.billMeta.setVisibility(TextUtils.isEmpty(meta) ? View.GONE : View.VISIBLE);
+                mBinding.billDesc.setText(text);
+                mBinding.billDesc.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
+                info.setTranslationX(ResUtil.dp2px(12));
+                info.animate().alpha(1f).translationX(0f).setDuration(260).start();
+            }).start();
+            // 背景剧照：新旧两张交叉淡化，而不是直接替换
+            loadBackdrop(pic);
         };
-        App.post(mBillboardTask, 180);
+        App.post(mBillboardTask, 120);
+    }
+
+    private void loadBackdrop(String pic) {
+        if (TextUtils.isEmpty(pic)) return;
+        Glide.with(mBinding.backdrop)
+                .load(ImgUtil.getUrl(pic))
+                .placeholder(mBinding.backdrop.getDrawable())
+                .transition(DrawableTransitionOptions.with(new DrawableCrossFadeFactory.Builder(450).setCrossFadeEnabled(true).build()))
+                .centerCrop()
+                .into(mBinding.backdrop);
     }
 
     private static boolean isFirstInRow(View focused) {

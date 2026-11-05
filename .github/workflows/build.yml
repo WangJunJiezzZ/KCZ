@@ -1,0 +1,115 @@
+# 二次开发：云端编译 APK
+# - 推送到 custom 分支：自动编译，APK 在本次运行页面底部的 Artifacts 里下载
+# - 手动运行并勾选"发布"：额外创建 GitHub Release（App 内"检查更新"读取这里）
+name: 编译 APK
+
+on:
+  push:
+    branches: [custom]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 发布为 Release（App 内检查更新可见）
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: 检出本仓库
+        uses: actions/checkout@v4
+        with:
+          path: TV
+
+      - name: 检出播放器内核源码 (FongMi/media)
+        uses: actions/checkout@v4
+        with:
+          repository: FongMi/media
+          ref: release-1.11.0-fongmi
+          path: media
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 编译播放器内核 aar
+        working-directory: media
+        run: |
+          tasks=$(sed -e 's/-release\.aar$//' -e 's/^/:/' -e 's/$/:assembleRelease/' ../TV/.github/media-modules.txt | tr '\n' ' ')
+          echo "tasks: $tasks"
+          ./gradlew $tasks --stacktrace
+
+      - name: 复制 aar 到 app/libs
+        run: |
+          while read -r name; do
+            [ -z "$name" ] && continue
+            file=$(find media/libraries -path '*/outputs/aar/*' -name "$name" | head -n 1)
+            if [ -z "$file" ]; then echo "::error::找不到 $name"; exit 1; fi
+            cp "$file" TV/app/libs/
+          done < TV/.github/media-modules.txt
+          ls -la TV/app/libs
+
+      - name: 写入签名配置
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::还没配置签名密钥。请在仓库 Settings -> Secrets and variables -> Actions 添加 KEYSTORE_BASE64 / KEY_ALIAS / KEY_PASSWORD"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          {
+            echo "sdk.dir=$ANDROID_HOME"
+            echo "storeFile=$RUNNER_TEMP/release.p12"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storePassword=$KEY_PASSWORD"
+          } > TV/local.properties
+
+      - name: 编译 APK（电视版 + 手机版）
+        working-directory: TV
+        run: ./gradlew :app:assembleLeanbackRelease :app:assembleMobileRelease --stacktrace
+
+      - name: 收集 APK
+        id: apk
+        run: |
+          mkdir -p out
+          find TV/app/build/outputs/apk -name '*.apk' -path '*/release/*' -exec cp {} out/ \;
+          ls -la out
+          version=$(grep -m1 'versionName' TV/app/build.gradle | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: 上传 APK（Artifacts）
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-${{ steps.apk.outputs.version }}-${{ github.run_number }}
+          path: out/*.apk
+
+      - name: 发布 Release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.apk.outputs.version }}
+          name: ${{ steps.apk.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          files: out/*.apk
+          body: |
+            # 電視版 ${{ steps.apk.outputs.version }}
+            - 云端自动编译
+            # 手機版 ${{ steps.apk.outputs.version }}
+            - 云端自动编译

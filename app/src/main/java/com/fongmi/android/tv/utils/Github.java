@@ -1,11 +1,13 @@
 package com.fongmi.android.tv.utils;
 
+import com.fongmi.android.tv.BuildConfig;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class Github {
 
-    private static final String REPO = "FongMi/Release";
+    private static final String REPO = BuildConfig.UPDATE_REPO;
 
     public static String getReleases() {
         return "https://api.github.com/repos/" + REPO + "/releases?per_page=100";

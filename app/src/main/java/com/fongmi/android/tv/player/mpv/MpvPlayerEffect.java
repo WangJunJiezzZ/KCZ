@@ -1,7 +1,7 @@
 package com.fongmi.android.tv.player.mpv;
 
 import androidx.media3.common.Format;
-import androidx.media3.common.audio.AudioEffectParameters;
+import com.fongmi.android.tv.player.effect.compat.AudioEffectParameters;
 import androidx.media3.mpvplayer.MpvPlayer;
 import androidx.media3.mpvplayer.audio.MpvAudioFilter;
 

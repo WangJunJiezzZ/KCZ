@@ -1,6 +1,6 @@
 package com.fongmi.android.tv.setting;
 
-import androidx.media3.common.audio.AudioChannelMode;
+import com.fongmi.android.tv.player.effect.compat.AudioChannelMode;
 
 import com.fongmi.android.tv.player.effect.audio.AudioEffectBands;
 import com.fongmi.android.tv.player.effect.audio.AudioEffectPreset;

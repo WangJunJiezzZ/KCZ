@@ -1,9 +1,9 @@
 package com.fongmi.android.tv.player.effect.audio;
 
 import androidx.annotation.Nullable;
-import androidx.media3.common.audio.AudioChannelMix;
-import androidx.media3.common.audio.AudioChannelMode;
-import androidx.media3.common.audio.AudioEffectParameters;
+import androidx.media3.mpvplayer.audio.AudioChannelMix;
+import com.fongmi.android.tv.player.effect.compat.AudioChannelMode;
+import com.fongmi.android.tv.player.effect.compat.AudioEffectParameters;
 import androidx.media3.mpvplayer.audio.MpvAudioFilter;
 
 public final class MpvAudioEffectFilter {

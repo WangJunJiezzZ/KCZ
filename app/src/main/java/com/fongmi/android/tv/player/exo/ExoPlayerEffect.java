@@ -1,7 +1,6 @@
 package com.fongmi.android.tv.player.exo;
 
 import androidx.media3.common.Format;
-import androidx.media3.common.audio.AudioEffectParameters;
 import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.exoplayer.ExoPlayer;
 
@@ -10,6 +9,7 @@ import com.fongmi.android.tv.player.effect.PlayerEffect;
 import com.fongmi.android.tv.player.effect.audio.AudioEffectBands;
 import com.fongmi.android.tv.player.effect.audio.AudioEffectConfig;
 import com.fongmi.android.tv.player.effect.audio.ExoAudioEffectController;
+import com.fongmi.android.tv.player.effect.compat.AudioEffectParameters;
 import com.fongmi.android.tv.player.effect.video.ExoVideoEffectController;
 import com.fongmi.android.tv.player.effect.video.VideoEffectProfile;
 import com.fongmi.android.tv.setting.VideoSetting;
@@ -41,13 +41,15 @@ public final class ExoPlayerEffect implements PlayerEffect {
         audioEffectController.release();
     }
 
+    // 二次开发：ExoPlayer 画面调节依赖未公开的 media 特效类，暂不支持（mpv 播放器不受影响）
     @Override
     public boolean supportsVideoEffect() {
-        return player.getVideoEffectsSupport() == ExoPlayer.VIDEO_EFFECTS_SUPPORTED;
+        return false;
     }
 
     @Override
     public int getVideoEffectError() {
+        if (player.getVideoEffectsSupport() == ExoPlayer.VIDEO_EFFECTS_SUPPORTED) return R.string.error_video_effect_unsupported;
         return switch (player.getVideoEffectsSupport()) {
             case ExoPlayer.VIDEO_EFFECTS_SUPPORTED -> 0;
             case ExoPlayer.VIDEO_EFFECTS_UNSUPPORTED_DRM -> R.string.error_video_effect_drm;
@@ -70,9 +72,10 @@ public final class ExoPlayerEffect implements PlayerEffect {
         applyVideoEffect();
     }
 
+    // 二次开发：ExoPlayer 音效依赖未公开的 media 音频处理类，暂不支持（mpv 播放器的音效照常可用）
     @Override
     public boolean supportsAudioEffect() {
-        return player.getAudioProcessingSupport() == ExoPlayer.AUDIO_PROCESSING_SUPPORTED && !audioEffectFailed;
+        return false;
     }
 
     @Override
@@ -83,7 +86,7 @@ public final class ExoPlayerEffect implements PlayerEffect {
     @Override
     public int getAudioEffectError() {
         return switch (player.getAudioProcessingSupport()) {
-            case ExoPlayer.AUDIO_PROCESSING_SUPPORTED -> audioEffectFailed ? R.string.error_audio_effect_apply : 0;
+            case ExoPlayer.AUDIO_PROCESSING_SUPPORTED -> R.string.error_audio_effect_unsupported;
             case ExoPlayer.AUDIO_PROCESSING_UNSUPPORTED_PASSTHROUGH -> R.string.error_audio_effect_passthrough;
             default -> R.string.error_audio_effect_unsupported;
         };
@@ -91,9 +94,7 @@ public final class ExoPlayerEffect implements PlayerEffect {
 
     @Override
     public void applyAudioEffect() {
-        boolean support = player.getAudioProcessingSupport() == ExoPlayer.AUDIO_PROCESSING_SUPPORTED;
-        if (support) applyAudioConfig(getAudioChannelCount());
-        else clearAudioEffect();
+        clearAudioEffect();
     }
 
     public void clearAudioEffect() {

@@ -1,33 +1,19 @@
 package com.fongmi.android.tv.player.effect.video;
 
-import androidx.media3.common.Effect;
-import androidx.media3.effect.ColorToneAdjustEffect;
-import androidx.media3.effect.DetailAdjustEffect;
-import androidx.media3.effect.VideoAdjustment;
 import androidx.media3.exoplayer.ExoPlayer;
 
 import java.util.List;
 
+/**
+ * 二次开发：上游的 ColorToneAdjustEffect / DetailAdjustEffect / VideoAdjustment 未在公开的 FongMi/media 中发布，
+ * ExoPlayer 下的画面调节暂不可用（ExoPlayerEffect.supportsVideoEffect 返回 false），这里只保留清除逻辑。
+ */
 public final class ExoVideoEffectController {
 
-    private final ColorToneAdjustEffect colorTone;
-    private final DetailAdjustEffect detail;
-    private final List<Effect> effects;
     private boolean configured;
 
-    public ExoVideoEffectController() {
-        this.colorTone = new ColorToneAdjustEffect();
-        this.detail = new DetailAdjustEffect();
-        this.effects = List.of(colorTone, detail);
-    }
-
     public void apply(ExoPlayer player, VideoEffectProfile profile) {
-        if (!configured && profile.isNoOp()) return;
-        VideoAdjustment adjustment = profile.toAdjustment();
-        colorTone.setAdjustment(adjustment);
-        detail.setAdjustment(adjustment);
-        player.setVideoEffects(effects);
-        configured = true;
+        clear(player);
     }
 
     public void clear(ExoPlayer player) {

@@ -8,7 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.media3.common.Format;
-import androidx.media3.common.audio.AudioChannelMode;
+import com.fongmi.android.tv.player.effect.compat.AudioChannelMode;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.databinding.DialogAudioSettingBinding;

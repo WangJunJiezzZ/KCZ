@@ -2,10 +2,10 @@ package com.fongmi.android.tv.player.effect.audio;
 
 import android.os.Build;
 
-import androidx.media3.common.audio.AudioEffectParameters;
-import androidx.media3.common.audio.AudioEffectProcessor;
+import com.fongmi.android.tv.player.effect.compat.AudioEffectParameters;
+import com.fongmi.android.tv.player.effect.compat.AudioEffectProcessor;
 import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.audio.AudioEqualizerController;
+import com.fongmi.android.tv.player.effect.compat.AudioEqualizerController;
 
 import com.fongmi.android.tv.App;
 

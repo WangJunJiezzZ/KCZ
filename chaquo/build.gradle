@@ -30,6 +30,11 @@ android {
             dimension "abi"
             ndk { abiFilters "armeabi-v7a" }
         }
+        // 二次开发：模拟器预览用
+        x86 {
+            dimension "abi"
+            ndk { abiFilters "x86" }
+        }
     }
 
     sourceSets {

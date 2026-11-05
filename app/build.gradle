@@ -44,6 +44,11 @@ android {
             dimension "abi"
             ndk { abiFilters "armeabi-v7a" }
         }
+        // 二次开发：仅供电脑上的 Android TV 模拟器预览界面用（ffmpeg/mpv/迅雷等 ARM 原生库不可用），不发布
+        x86 {
+            dimension "abi"
+            ndk { abiFilters "x86" }
+        }
     }
 
     buildFeatures {

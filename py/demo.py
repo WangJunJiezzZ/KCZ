@@ -24,8 +24,8 @@ VIDEOS = [
         "vod_pic": f"{WIKI}/8/8f/Sintel_poster.jpg",
         "vod_remarks": "2010 · 奇幻",
         "type_id": "anim",
-        "vod_content": "Blender 基金会开源短片（CC BY 3.0）。",
-        "episodes": [("1080P", "https://download.blender.org/durian/movies/Sintel.2010.1080p.mkv")],
+        "vod_content": "Blender 基金会开源短片（CC BY 3.0）。原片服务器拒绝外部播放器访问，示例里用 Apple 公开的 HLS 测试流代替。",
+        "episodes": [("测试流(HLS)", "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8")],
     },
     {
         "vod_id": "tos",

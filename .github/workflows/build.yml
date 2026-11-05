@@ -87,7 +87,9 @@ jobs:
         # 失败时把关键报错摘成 ::error:: 注释，方便在运行概览里直接看到
         run: |
           set -o pipefail
-          if ! bash ./gradlew :app:assembleLeanbackRelease :app:assembleMobileRelease --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"; then
+          # 5.6.1 有"设备 × CPU 架构"两个维度，任务名要写全
+          tasks=":app:assembleLeanbackArm64_v8aRelease :app:assembleLeanbackArmeabi_v7aRelease :app:assembleMobileArm64_v8aRelease :app:assembleMobileArmeabi_v7aRelease"
+          if ! bash ./gradlew $tasks --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"; then
             grep -E '(error:|^e: |What went wrong|> Task .* FAILED|Could not|cannot find symbol|does not exist|Unresolved reference|AAPT: error)' "$RUNNER_TEMP/build.log" \
               | grep -v '^\s*at ' | head -n 40 | while IFS= read -r line; do echo "::error::${line:0:900}"; done
             grep -A 12 'What went wrong' "$RUNNER_TEMP/build.log" | head -n 40 | while IFS= read -r line; do echo "::warning::${line:0:900}"; done

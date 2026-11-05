@@ -2,6 +2,7 @@ package com.fongmi.android.tv.utils;
 
 import android.net.Uri;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.BuildConfig;
@@ -12,6 +13,8 @@ import org.json.JSONObject;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 /**
@@ -45,12 +48,17 @@ public final class Backdrop {
             callback.accept(cached);
             return;
         }
-        Task.submit(() -> {
+        EXECUTOR.submit(() -> {
             String url = search(key);
             CACHE.put(key, url);
+            Log.d(TAG, key + " -> " + (url.isEmpty() ? "(无剧照，用海报)" : url));
             App.post(() -> callback.accept(url));
         });
     }
+
+    private static final String TAG = "Backdrop";
+    /** 独立线程池：App 公共任务池只有 5 个线程，常被配置加载 / 爬虫占满，剧照查询排不上队 */
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2);
 
     private static String search(String query) {
         try {
@@ -64,7 +72,7 @@ public final class Backdrop {
                 if (!TextUtils.isEmpty(path) && !"null".equals(path)) return IMAGE + path;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "查询失败：" + query, e);
         }
         return "";
     }

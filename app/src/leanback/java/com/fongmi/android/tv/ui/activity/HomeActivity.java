@@ -96,6 +96,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.List;
 import java.util.Optional;
 
@@ -109,6 +111,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private HomeRailPresenter mRailPresenter;
     private SiteViewModel mViewModel;
     private Runnable mBillboardTask;
+    private String mBillboardName;
     private volatile int mRowsToken;
     private boolean mRailExpanded;
     private Result mResult;
@@ -209,7 +212,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private void showBillboard(String kicker, String name, String meta, String desc, String hd, String poster) {
         App.removeCallbacks(mBillboardTask);
         mBillboardTask = () -> {
-            if (name.equals(mBinding.billTitle.getText().toString())) return;
+            // 用立即更新的变量判断"当前影片"，不依赖带动画的片名文字（快速切换时动画会被打断）
+            if (name.equals(mBillboardName)) return;
+            mBillboardName = name;
             String text = desc == null ? "" : desc.replaceAll("<[^>]+>", "").replaceAll("\\s+", " ").trim();
             // 文字：淡出 + 左移 → 换内容 → 淡入归位（和 HTML 设计稿一致的过渡）
             View info = (View) mBinding.billTitle.getParent();
@@ -228,7 +233,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             if (!TextUtils.isEmpty(hd)) loadBackdrop(hd);
             else if (!Backdrop.enabled()) loadBackdrop(poster);
             else Backdrop.find(name, url -> {
-                if (name.equals(mBinding.billTitle.getText().toString())) loadBackdrop(url.isEmpty() ? poster : url);
+                if (name.equals(mBillboardName)) loadBackdrop(url.isEmpty() ? poster : url);
             });
         };
         App.post(mBillboardTask, 120);
@@ -383,6 +388,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     // 后台按顺序逐个取每个分类的第一页，取到一个就加一行；刷新或切换源时 token 变化，作废旧任务
 
     private static final int MAX_CATEGORY_ROWS = 10;
+    /** 分类行用独立单线程加载：慢站点每个分类可能要等十几秒，不能占着 App 公共任务池 */
+    private static final ExecutorService ROWS_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private void loadCategoryRows(Result home) {
         int token = ++mRowsToken;
@@ -390,7 +397,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         List<com.fongmi.android.tv.bean.Class> types = new ArrayList<>(home.getTypes());
         LinkedHashMap<String, List<Filter>> filters = home.getFilters();
         if (types.isEmpty() || site.isIndex()) return;
-        Task.submit(() -> {
+        ROWS_EXECUTOR.submit(() -> {
             int count = 0;
             for (com.fongmi.android.tv.bean.Class type : types) {
                 if (token != mRowsToken || count >= MAX_CATEGORY_ROWS) return;

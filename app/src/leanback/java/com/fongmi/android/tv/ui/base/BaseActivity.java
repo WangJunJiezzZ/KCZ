@@ -12,10 +12,12 @@ import android.view.ViewGroup;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.ui.custom.CustomWallView;
 import com.fongmi.android.tv.utils.ChineseLocale;
 import com.fongmi.android.tv.utils.Util;
@@ -50,6 +52,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     @Override
     public void setContentView(View view) {
         super.setContentView(view);
+        getWindow().getDecorView().setBackgroundColor(ContextCompat.getColor(this, R.color.home_bg));
         if (!customWall()) return;
         ((ViewGroup) findViewById(android.R.id.content)).addView(new CustomWallView(this, null), 0, new ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT));
     }
@@ -58,8 +61,9 @@ public abstract class BaseActivity extends AppCompatActivity {
         return this;
     }
 
+    // 二次开发：所有页面统一黑色背景（不再显示绿色壁纸），和奈飞风格首页一致
     protected boolean customWall() {
-        return true;
+        return false;
     }
 
     protected void initView(Bundle savedInstanceState) {

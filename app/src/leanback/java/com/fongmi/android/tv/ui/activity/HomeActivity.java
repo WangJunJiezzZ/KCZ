@@ -33,13 +33,16 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Updater;
+import com.fongmi.android.tv.api.SiteApi;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Cache;
 import com.fongmi.android.tv.bean.Config;
+import com.fongmi.android.tv.bean.Filter;
 import com.fongmi.android.tv.bean.Func;
 import com.fongmi.android.tv.bean.History;
+import com.fongmi.android.tv.bean.HomeRowTitle;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Style;
@@ -78,6 +81,7 @@ import com.fongmi.android.tv.utils.KeyUtil;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.Task;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.net.OkHttp;
@@ -88,6 +92,8 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -101,6 +107,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private HomeRailPresenter mRailPresenter;
     private SiteViewModel mViewModel;
     private Runnable mBillboardTask;
+    private volatile int mRowsToken;
     private boolean mRailExpanded;
     private Result mResult;
     private Clock mClock;
@@ -268,6 +275,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private void setRecyclerView() {
         CustomSelector selector = new CustomSelector();
         selector.addPresenter(Integer.class, new HomeHeaderPresenter());
+        selector.addPresenter(HomeRowTitle.class, new HomeHeaderPresenter());
         selector.addPresenter(String.class, new ProgressPresenter());
         selector.addPresenter(Vod.class, new HomePosterPresenter(this));
         selector.addPresenter(ListRow.class, new CustomRowPresenter(12, FocusHighlight.ZOOM_FACTOR_SMALL, HorizontalGridView.FOCUS_SCROLL_ALIGNED), HomePosterPresenter.class);
@@ -288,6 +296,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mViewModel.getResult().observe(this, result -> {
             mAdapter.remove("progress");
             addVideo(mResult = result);
+            loadCategoryRows(result);
             Cache.clear().put(result);
         });
     }
@@ -351,6 +360,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void getVideo() {
+        mRowsToken++;
         mResult = Result.empty();
         int index = getRecommendIndex();
         boolean gone = mAdapter.indexOf("progress") == -1;
@@ -358,6 +368,50 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         if (hasItem) mAdapter.removeItems(index, mAdapter.size() - index);
         if (gone) mAdapter.add("progress");
         mViewModel.homeContent();
+    }
+
+    // ===== 二次开发：首页按分类分行（电影 / 剧集 / 动漫 …）=====
+    // 后台按顺序逐个取每个分类的第一页，取到一个就加一行；刷新或切换源时 token 变化，作废旧任务
+
+    private static final int MAX_CATEGORY_ROWS = 10;
+
+    private void loadCategoryRows(Result home) {
+        int token = ++mRowsToken;
+        Site site = getHome();
+        List<com.fongmi.android.tv.bean.Class> types = new ArrayList<>(home.getTypes());
+        LinkedHashMap<String, List<Filter>> filters = home.getFilters();
+        if (types.isEmpty() || site.isIndex()) return;
+        Task.submit(() -> {
+            int count = 0;
+            for (com.fongmi.android.tv.bean.Class type : types) {
+                if (token != mRowsToken || count >= MAX_CATEGORY_ROWS) return;
+                try {
+                    // 和原版点播页一样，带上该分类每个筛选条件的默认值（部分源不带会报错）
+                    HashMap<String, String> extend = getDefaultExtend(filters.get(type.getTypeId()));
+                    List<Vod> items = SiteApi.categoryContent(site.getKey(), type.getTypeId(), "1", !extend.isEmpty(), extend).getList();
+                    if (items.isEmpty()) continue;
+                    count++;
+                    App.post(() -> addCategoryRow(token, type.getTypeName(), items));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    private static HashMap<String, String> getDefaultExtend(List<Filter> filters) {
+        HashMap<String, String> extend = new HashMap<>();
+        if (filters == null) return extend;
+        for (Filter filter : filters) if (!TextUtils.isEmpty(filter.getInit())) extend.put(filter.getKey(), filter.getInit());
+        return extend;
+    }
+
+    private void addCategoryRow(int token, String name, List<Vod> items) {
+        if (token != mRowsToken) return;
+        ArrayObjectAdapter adapter = new ArrayObjectAdapter(new HomePosterPresenter(this));
+        adapter.addAll(0, items);
+        mAdapter.add(new HomeRowTitle(name));
+        mAdapter.add(new ListRow(adapter));
     }
 
     // 二次开发：推荐内容统一放进一行横向滑动的海报（不再按网格分多行）

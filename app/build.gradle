@@ -67,6 +67,10 @@ android {
     }
 
     buildTypes {
+        // 二次开发：调试版也用正式签名，能直接覆盖安装正式版（数据和配置不丢）
+        debug {
+            signingConfig = signingConfigs.release
+        }
         release {
             minifyEnabled = true
             shrinkResources = true

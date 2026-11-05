@@ -116,6 +116,9 @@ jobs:
         # 上游仓库里 gradlew 没有可执行权限，用 bash 调用；失败时把关键报错摘成注释
         run: |
           set -o pipefail
+          # 云端机器有 16GB 内存，项目默认只给 Gradle 2GB，打包 APK 时会内存不足（OutOfMemoryError）
+          sed -i -E 's/^org\.gradle\.jvmargs=-Xmx[0-9]+[mg]/org.gradle.jvmargs=-Xmx6g/' gradle.properties
+          grep '^org.gradle.jvmargs' gradle.properties
           tasks=":app:assembleLeanbackArm64_v8aRelease :app:assembleLeanbackArmeabi_v7aRelease"
           if ! bash ./gradlew $tasks --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"; then
             grep -E '(error:|^e: |What went wrong|> Task .* FAILED|Could not|cannot find symbol|No space left|OutOfMemory)' "$RUNNER_TEMP/build.log" \

@@ -28,7 +28,7 @@ public class HomeHeaderPresenter extends Presenter {
 
     @Override
     public void onBindViewHolder(@NonNull Presenter.ViewHolder viewHolder, Object object) {
-        ((TextView) viewHolder.view).setText(object instanceof String ? object.toString() : ResUtil.getString((int) object));
+        ((TextView) viewHolder.view).setText(object instanceof Integer res ? ResUtil.getString(res) : object.toString());
     }
 
     @Override

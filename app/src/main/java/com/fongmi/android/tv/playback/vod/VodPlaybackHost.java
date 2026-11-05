@@ -59,6 +59,26 @@ public interface VodPlaybackHost {
 
     void requestSearch(List<Site> sites, String keyword);
 
+    /** 二次开发：发起线路测速；返回 false 表示这个界面不支持（手机版），控制器就不等结果直接播 */
+    default boolean requestLineProbe(LineProbe.Request request) {
+        return false;
+    }
+
+    /** 二次开发：等待测速期间在播放区显示状态，count = 正在测的线路数 */
+    default void showLineProbing(int count) {
+    }
+
+    default void hideLineProbing() {
+    }
+
+    /**
+     * 二次开发：网盘线路播放失败。返回 true 表示界面接手（弹对应网盘的扫码登录），控制器不自动换线；
+     * 返回 false（同一网盘已弹过多次 / 手机版默认）则按原版自动换线。
+     */
+    default boolean handleNetdiskError(String disk, String msg) {
+        return false;
+    }
+
     void prepareSource(Vod item);
 
     void stopPlaybackForRefresh();

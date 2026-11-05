@@ -16,6 +16,13 @@
 
     <style name="Theme.App" parent="Theme.Base" />
 
+    <!-- 二次开发：网盘扫码用的透明垫页，用户看不见它，下面的详情页照常显示 -->
+    <style name="Theme.Bridge" parent="Theme.Base">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <style name="Theme.Crash" parent="Theme.Base">
         <item name="android:windowBackground">@color/grey_800</item>
         <item name="android:windowDisablePreview">true</item>

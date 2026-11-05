@@ -33,6 +33,11 @@ public class VodPlaybackState {
     private boolean selectFirstSource;
     private boolean autoFallback;
     private boolean useParse;
+    // 二次开发：线路测速
+    private int probeToken;
+    private String probedKey = "";
+    private boolean waitingProbe;
+    private boolean userPickedFlag;
 
     public VodPlaybackState() {
         this.failedIds = new HashSet<>();
@@ -60,6 +65,64 @@ public class VodPlaybackState {
         selectFirstSource = false;
         autoFallback = false;
         useParse = false;
+        failedFlags.clear();
+        probeToken++;
+        probedKey = "";
+        waitingProbe = false;
+        userPickedFlag = false;
+    }
+
+    /** 开始一次新的测速，返回 token；之前的测速结果随之作废 */
+    int beginProbe(String key, boolean waiting) {
+        probedKey = key;
+        waitingProbe = waiting;
+        userPickedFlag = false;
+        return ++probeToken;
+    }
+
+    /** 换源时作废进行中的测速，旧结果回来也不会作用到新站的线路上 */
+    void cancelProbe() {
+        probeToken++;
+        waitingProbe = false;
+    }
+
+    boolean isProbed(String key) {
+        return probedKey.equals(key);
+    }
+
+    boolean isCurrentProbe(int token) {
+        return token == probeToken;
+    }
+
+    boolean isWaitingProbe() {
+        return waitingProbe;
+    }
+
+    void setWaitingProbe(boolean waitingProbe) {
+        this.waitingProbe = waitingProbe;
+    }
+
+    boolean isUserPickedFlag() {
+        return userPickedFlag;
+    }
+
+    void setUserPickedFlag(boolean userPickedFlag) {
+        this.userPickedFlag = userPickedFlag;
+    }
+
+    // 二次开发：本片已自动换线失败过的线路，自动换线时跳过，避免在几条坏线路之间来回打转
+    private final Set<String> failedFlags = new HashSet<>();
+
+    void addFailedFlag(String flag) {
+        failedFlags.add(flag);
+    }
+
+    boolean isFailedFlag(String flag) {
+        return failedFlags.contains(flag);
+    }
+
+    void clearFailedFlags() {
+        failedFlags.clear();
     }
 
     void addFailedId(String id) {
@@ -94,6 +157,7 @@ public class VodPlaybackState {
     void setFlags(List<Flag> items) {
         flags.clear();
         flags.addAll(items);
+        failedFlags.clear();
     }
 
     boolean hasFlags() {

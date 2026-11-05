@@ -5,6 +5,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- 二次开发：加载时用暗化的剧照垫底，不再是纯黑一块（只有详情页会设置） -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/cover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.35"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
     <com.google.android.material.progressindicator.CircularProgressIndicator
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -22,6 +31,19 @@
         android:textSize="16sp"
         android:visibility="gone"
         tools:text="120 KB/s"
+        tools:visibility="visible" />
+
+    <!-- 二次开发：状态文字，如「正在测速选线（11 条）」 -->
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="68dp"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:visibility="gone"
+        tools:text="正在测速选线（11 条）"
         tools:visibility="visible" />
 
 </FrameLayout>

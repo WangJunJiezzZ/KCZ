@@ -37,6 +37,8 @@ public class Flag implements Parcelable, Diffable<Flag> {
 
     private boolean selected;
     private int position;
+    // 二次开发：测速标签（如「1080P」「卡」），只用于显示，不序列化
+    private transient String badge;
 
     public Flag() {
         this.position = -1;
@@ -74,6 +76,14 @@ public class Flag implements Parcelable, Diffable<Flag> {
 
     public String getFlag() {
         return TextUtils.isEmpty(flag) ? "" : flag;
+    }
+
+    public String getBadge() {
+        return TextUtils.isEmpty(badge) ? "" : badge;
+    }
+
+    public void setBadge(String badge) {
+        this.badge = badge;
     }
 
     public void setFlag(String flag) {

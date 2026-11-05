@@ -12,9 +12,11 @@ import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.playback.PlaybackResult;
+import com.fongmi.android.tv.utils.NetdiskLogin;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class VodPlaybackController {
 
@@ -149,6 +151,12 @@ public class VodPlaybackController {
     }
 
     public void selectFlag(Flag item) {
+        // 电视版焦点落到哪条线路就会回调这里，程序设置选中位置也会触发；
+        // 落在已选中的线路上什么都不做，也不算用户手动选择（否则测速期间会被当成用户点了预选线路而直接开播）
+        Flag target = findFlag(item);
+        if (target != null && target.isSelected()) return;
+        stopWaitingProbe();
+        state.setUserPickedFlag(true);
         selectFlag(item, false);
     }
 
@@ -166,6 +174,7 @@ public class VodPlaybackController {
 
     public void selectEpisode(Episode item) {
         if (!state.hasFlags()) return;
+        stopWaitingProbe();
         saveCurrentHistory();
         Flag selected = state.getFlag();
         for (Flag flag : state.getFlags()) flag.toggle(flag == selected, item);
@@ -222,6 +231,8 @@ public class VodPlaybackController {
     }
 
     private void switchSource(Vod item, boolean autoFallback) {
+        stopWaitingProbe();
+        state.cancelProbe();
         state.setAutoFallback(autoFallback);
         saveCurrentHistory();
         clearPreload();
@@ -241,6 +252,10 @@ public class VodPlaybackController {
     public void playbackError(String msg) {
         clearPreload();
         host.resetPlaybackForError(msg);
+        // 二次开发：网盘线路失败不自动换线，交给界面弹对应网盘的扫码登录（没登录就不该切走）
+        String disk = NetdiskLogin.detect(msg);
+        if (disk == null && state.hasFlags()) disk = NetdiskLogin.diskOfFlag(state.getFlag().getFlag());
+        if (disk != null && host.handleNetdiskError(disk, msg)) return;
         fallbackPolicy.playbackError();
     }
 
@@ -410,9 +425,74 @@ public class VodPlaybackController {
 
     private void detailLoaded(Vod item) {
         VodPlayRequest activeRequest = state.getActiveRequest();
+        boolean fresh = History.find(host.getHistoryKey()) == null;
         History history = applyDetail(item);
-        if (state.hasFlags()) restoreDetail(activeRequest, history);
-        else fallbackPolicy.emptyFlag();
+        if (!state.hasFlags()) fallbackPolicy.emptyFlag();
+        else if (!startLineProbe(activeRequest, history, fresh)) restoreDetail(activeRequest, history);
+    }
+
+    /**
+     * 二次开发：线路测速。
+     * 没看过的片子：先测速，等结果出来再播排第一的线路（返回 true，调用方暂不播放）。
+     * 看过的片子：照常按历史线路播，测速在后台进行，结果只用来排序和加标签（返回 false）。
+     */
+    private boolean startLineProbe(VodPlayRequest activeRequest, History history, boolean fresh) {
+        String probeKey = host.getVodKey() + "\n" + host.getVodId();
+        if (activeRequest != null || state.isProbed(probeKey)) return false;
+        List<LineProbe.Target> targets = LineProbe.targets(state.getFlags(), history);
+        if (targets.size() < 2) return false;
+        int token = state.beginProbe(probeKey, fresh);
+        if (!host.requestLineProbe(new LineProbe.Request(token, host.getVodKey(), targets))) {
+            state.setWaitingProbe(false);
+            return false;
+        }
+        if (!fresh) return false;
+        previewFlag(history.getFlag());
+        host.showLineProbing(targets.size());
+        return true;
+    }
+
+    /** 测速期间先把历史线路的选集列出来（不播放），用户可以直接点 */
+    private void previewFlag(Flag item) {
+        Flag flag = resolveFlag(item);
+        for (Flag f : state.getFlags()) f.setSelected(flag);
+        host.renderFlagSelection(flag);
+        host.renderEpisodes(flag.getEpisodes());
+        host.renderQualityVisible(false);
+    }
+
+    public void onLineProbeResult(LineProbe.Report report) {
+        if (report == null || !state.isCurrentProbe(report.token()) || !state.hasFlags()) return;
+        Map<String, LineProbe.Result> results = report.results();
+        for (Flag flag : state.getFlags()) flag.setBadge(LineRank.badge(results.get(flag.getFlag())));
+        boolean waiting = state.isWaitingProbe();
+        state.setWaitingProbe(false);
+        // 用户已经手动选过线路就不重排，免得按钮位置在眼前跳动
+        if (!state.isUserPickedFlag()) LineRank.sort(state.getFlags(), results);
+        host.renderFlags(state.getFlags());
+        if (waiting) {
+            host.hideLineProbing();
+            History history = state.getHistory();
+            Flag best = findPlayableFlag(history);
+            if (best != null) history.setVodFlag(best.getFlag());
+            restoreDetail(null, history);
+        } else {
+            host.renderFlagSelection(state.getFlag());
+        }
+    }
+
+    /** 排序后第一条能找到「要看的那一集」的线路（不同线路剧集命名可能不一致，找不到就会播不出来） */
+    private Flag findPlayableFlag(History history) {
+        boolean strict = host.getVodMark().isEmpty();
+        for (Flag flag : state.getFlags()) if (flag.find(history.getVodRemarks(), strict) != null) return flag;
+        return null;
+    }
+
+    private boolean stopWaitingProbe() {
+        if (!state.isWaitingProbe()) return false;
+        state.setWaitingProbe(false);
+        host.hideLineProbing();
+        return true;
     }
 
     private History applyDetail(Vod item) {

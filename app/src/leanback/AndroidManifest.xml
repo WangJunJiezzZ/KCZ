@@ -129,6 +129,14 @@
             android:parentActivityName=".ui.activity.HomeActivity"
             android:screenOrientation="sensorLandscape" />
 
+        <!-- 二次开发：网盘扫码透明垫页 -->
+        <activity
+            android:name=".ui.activity.LoginBridgeActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|uiMode|orientation|keyboard|keyboardHidden|navigation"
+            android:excludeFromRecents="true"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.Bridge" />
+
         <activity
             android:name=".ui.activity.KeepActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"

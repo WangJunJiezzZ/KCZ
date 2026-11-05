@@ -60,6 +60,11 @@
     <string name="play_ready">準備播放：<xliff:g name="name">%s</xliff:g></string>
     <string name="play_switch_flag">正在切換線路至「<xliff:g name="name">%s</xliff:g>」</string>
     <string name="play_switch_site">正在切換站源至「<xliff:g name="name">%s</xliff:g>」</string>
+    <string name="line_probing">正在測速選線（<xliff:g name="count">%d</xliff:g> 條）</string>
+    <string name="netdisk_login_opening">沒有登入<xliff:g name="disk">%s</xliff:g>網盤，正在打開掃碼登入…</string>
+    <string name="netdisk_login_checking">播放失敗，正在檢查<xliff:g name="disk">%s</xliff:g>網盤登入狀態…</string>
+    <string name="netdisk_login_waiting">請用<xliff:g name="disk">%s</xliff:g> App 掃碼，登入成功後會自動重新播放</string>
+    <string name="netdisk_login_missing">設定裡沒找到掃碼登入入口，請到「配置中心」站手動登入</string>
     <string name="play_switch_parse">正在切换解析至「<xliff:g name="name">%s</xliff:g>」</string>
 
     <!-- Playback Setting -->

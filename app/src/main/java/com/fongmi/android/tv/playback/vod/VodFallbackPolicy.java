@@ -62,12 +62,17 @@ class VodFallbackPolicy {
     }
 
     private boolean fallbackToNextLine() {
-        int position = state.getFlagPosition() + 1;
-        if (position >= state.getFlags().size()) return false;
-        Flag flag = state.getFlags().get(position);
-        host.showSwitchLine(flag);
-        controller.selectFlag(flag);
-        return true;
+        // 二次开发：记下失败的线路，只往后找没失败过的（原版只取下一条，坏线路会被焦点回调选回来，造成来回打转）
+        state.addFailedFlag(state.getFlag().getFlag());
+        List<Flag> flags = state.getFlags();
+        for (int i = state.getFlagPosition() + 1; i < flags.size(); i++) {
+            Flag flag = flags.get(i);
+            if (state.isFailedFlag(flag.getFlag())) continue;
+            host.showSwitchLine(flag);
+            controller.selectFlag(flag);
+            return true;
+        }
+        return false;
     }
 
     private void fallbackToNextSource(boolean force) {

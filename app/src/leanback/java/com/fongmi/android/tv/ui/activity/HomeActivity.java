@@ -20,6 +20,7 @@ import androidx.leanback.widget.FocusHighlight;
 import androidx.leanback.widget.HorizontalGridView;
 import androidx.leanback.widget.ItemBridgeAdapter;
 import androidx.leanback.widget.ListRow;
+import androidx.core.content.ContextCompat;
 import androidx.leanback.widget.OnChildViewHolderSelectedListener;
 import androidx.leanback.widget.VerticalGridView;
 import androidx.lifecycle.ViewModelProvider;
@@ -78,6 +79,7 @@ import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.utils.Backdrop;
 import com.fongmi.android.tv.utils.Clock;
 import com.fongmi.android.tv.utils.FileChooser;
+import com.fongmi.android.tv.utils.HomeRowPlanner;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.KeyUtil;
 import com.fongmi.android.tv.utils.Notify;
@@ -95,11 +97,12 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public class HomeActivity extends BaseActivity implements CustomTitleView.Listener, HomePosterPresenter.Listener, FuncPresenter.OnClickListener, HomeResumePresenter.Listener {
 
@@ -162,6 +165,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     protected void initEvent() {
         mBinding.title.setListener(this);
+        // 二次开发：右上角首页源获得焦点时变亮，让人知道可以按 ←/→ 切换
+        mBinding.title.setOnFocusChangeListener((v, hasFocus) -> mBinding.title.setTextColor(hasFocus ? 0xFFFFFFFF : ContextCompat.getColor(this, R.color.home_text_dim)));
         mBinding.recycler.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
@@ -196,7 +201,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public void onFocus(Vod item) {
         String meta = joinMeta(item.getYear(), item.getArea(), item.getTypeName(), item.getRemarks());
-        showBillboard(getHome().getName(), item.getName(), meta, item.getContent(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic());
+        showBillboard(item.getSite() != null ? item.getSiteName() : getHome().getName(), item.getName(), meta, item.getContent(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic());
     }
 
     @Override
@@ -391,28 +396,88 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     /** 分类行用独立单线程加载：慢站点每个分类可能要等十几秒，不能占着 App 公共任务池 */
     private static final ExecutorService ROWS_EXECUTOR = Executors.newSingleThreadExecutor();
 
+    /** 去重后少于这么多部就不成行 */
+    private static final int MIN_ROW_ITEMS = 4;
+    /** 首页站缺某类型时，最多试几个专门站 */
+    private static final int MAX_GENRE_SITES = 3;
+
+    /**
+     * 首页按类型分行（规则见 HomeRowPlanner）：
+     * 1. 热门电影 / 热门剧集 / 热门综艺 / 动漫 / 短剧 各一行，优先用首页站的分类，没有就去专门站补；
+     * 2. 首页站里不属于这几类的分类（如纪录片、体育）照常各一行；
+     * 同一部片子只在首页出现一次（热门推荐行里有的也不再出现）。
+     * 片单型站（indexs=1，如饭太硬默认首页）也照样分行：点条目时 onItemClick 会转去全网搜索。
+     */
     private void loadCategoryRows(Result home) {
         int token = ++mRowsToken;
         Site site = getHome();
         List<com.fongmi.android.tv.bean.Class> types = new ArrayList<>(home.getTypes());
-        LinkedHashMap<String, List<Filter>> filters = home.getFilters();
-        if (types.isEmpty() || site.isIndex()) return;
+        List<Site> sites = new ArrayList<>(VodConfig.get().getSites());
+        Set<String> seen = new HashSet<>();
+        for (Vod vod : home.getList()) seen.add(vod.getName());
         ROWS_EXECUTOR.submit(() -> {
             int count = 0;
+            for (HomeRowPlanner.Genre genre : HomeRowPlanner.Genre.values()) {
+                if (token != mRowsToken || count >= MAX_CATEGORY_ROWS) return;
+                com.fongmi.android.tv.bean.Class type = HomeRowPlanner.pick(types, genre);
+                boolean added = type != null && loadRow(token, site, home, type, genre.title, seen);
+                if (!added) added = loadGenreFromOtherSite(token, sites, site, genre, seen);
+                if (added) count++;
+            }
             for (com.fongmi.android.tv.bean.Class type : types) {
                 if (token != mRowsToken || count >= MAX_CATEGORY_ROWS) return;
-                try {
-                    // 和原版点播页一样，带上该分类每个筛选条件的默认值（部分源不带会报错）
-                    HashMap<String, String> extend = getDefaultExtend(filters.get(type.getTypeId()));
-                    List<Vod> items = SiteApi.categoryContent(site.getKey(), type.getTypeId(), "1", !extend.isEmpty(), extend).getList();
-                    if (items.isEmpty()) continue;
-                    count++;
-                    App.post(() -> addCategoryRow(token, type, items));
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
+                if (HomeRowPlanner.genreOf(type.getTypeName()) != null) continue;
+                if (loadRow(token, site, home, type, type.getTypeName(), seen)) count++;
             }
         });
+    }
+
+    /**
+     * 首页站没有该类型时：先去名字带该类型的专门站（如「巴士┃动漫」「短剧┃小猫」）取一行，
+     * 没有专门站再到综合影视站（如「爱看┃采集」）的分类里找该类型。各最多试 MAX_GENRE_SITES 个站。
+     */
+    private boolean loadGenreFromOtherSite(int token, List<Site> sites, Site home, HomeRowPlanner.Genre genre, Set<String> seen) {
+        if (loadGenreFrom(token, HomeRowPlanner.sitesFor(sites, genre, home), genre, true, seen)) return true;
+        return loadGenreFrom(token, HomeRowPlanner.generalSites(sites, home), genre, false, seen);
+    }
+
+    /** dedicated：专门站找不到同名分类时，用它的第一个分类（专门站的第一个分类通常就是该类型） */
+    private boolean loadGenreFrom(int token, List<Site> candidates, HomeRowPlanner.Genre genre, boolean dedicated, Set<String> seen) {
+        int tried = 0;
+        for (Site site : candidates) {
+            if (token != mRowsToken || tried++ >= MAX_GENRE_SITES) return false;
+            try {
+                Result result = SiteApi.homeContent(site);
+                List<com.fongmi.android.tv.bean.Class> types = result.getTypes();
+                com.fongmi.android.tv.bean.Class type = HomeRowPlanner.pick(types, genre);
+                if (type == null && dedicated && !types.isEmpty()) type = types.get(0);
+                if (type != null && loadRow(token, site, result, type, genre.title, seen)) return true;
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
+    }
+
+    /** 取某站某分类第一页、去重后加一行；成功返回 true（后台线程调用） */
+    private boolean loadRow(int token, Site site, Result result, com.fongmi.android.tv.bean.Class type, String title, Set<String> seen) {
+        try {
+            // 和原版点播页一样，带上该分类每个筛选条件的默认值（部分源不带会报错）
+            HashMap<String, String> extend = getDefaultExtend(result.getFilters().get(type.getTypeId()));
+            List<Vod> items = new ArrayList<>();
+            for (Vod vod : SiteApi.categoryContent(site.getKey(), type.getTypeId(), "1", !extend.isEmpty(), extend).getList()) {
+                if (!seen.add(vod.getName())) continue;
+                vod.setSite(site); // 点击时用它所在的站打开（动漫、短剧行可能来自别的站）
+                items.add(vod);
+            }
+            if (items.size() < MIN_ROW_ITEMS) return false;
+            HomeMore more = new HomeMore(site.getKey(), result, type.getTypeId(), title);
+            App.post(() -> addCategoryRow(token, title, items, more));
+            return true;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     private static HashMap<String, String> getDefaultExtend(List<Filter> filters) {
@@ -422,18 +487,18 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         return extend;
     }
 
-    private void addCategoryRow(int token, com.fongmi.android.tv.bean.Class type, List<Vod> items) {
+    private void addCategoryRow(int token, String title, List<Vod> items, HomeMore more) {
         if (token != mRowsToken) return;
         ArrayObjectAdapter adapter = new ArrayObjectAdapter(new HomePosterPresenter(this));
         adapter.addAll(0, items);
-        adapter.add(new HomeMore(type.getTypeId(), type.getTypeName()));
-        mAdapter.add(new HomeRowTitle(type.getTypeName()));
+        adapter.add(more);
+        mAdapter.add(new HomeRowTitle(title));
         mAdapter.add(new ListRow(adapter));
     }
 
     @Override
     public void onMore(HomeMore item) {
-        VodActivity.start(this, getHome().getKey(), mResult, item.getTypeId());
+        VodActivity.start(this, item.getSiteKey(), item.getResult(), item.getTypeId());
     }
 
     // 二次开发：推荐内容统一放进一行横向滑动的海报（不再按网格分多行）
@@ -578,6 +643,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     public void onItemClick(Func item) {
+        mBackToContent = true;
         if (item.getResId() == R.string.home_vod) VodActivity.start(this, mResult);
         else if (item.getResId() == R.string.home_live) LiveActivity.start(this);
         else if (item.getResId() == R.string.home_keep) KeepActivity.start(this);
@@ -588,9 +654,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     public void onItemClick(Vod item) {
-        if (item.isAction()) mViewModel.action(getHome().getKey(), item.getAction());
-        else if (getHome().isIndex()) CollectActivity.start(this, item.getName());
-        else VideoActivity.start(this, getHome().getKey(), item.getId(), item.getName(), item.getPic());
+        // 二次开发：分类行的片子可能来自首页站以外的站（动漫、短剧行），用它所在的站打开
+        Site site = item.getSite() != null ? item.getSite() : getHome();
+        if (item.isAction()) mViewModel.action(site.getKey(), item.getAction());
+        else if (site.isIndex()) CollectActivity.start(this, item.getName());
+        else VideoActivity.start(this, site.getKey(), item.getId(), item.getName(), item.getPic());
     }
 
     @Override
@@ -641,6 +709,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         // 二次开发：在一行的第一张海报上按 ←，焦点进入左侧导航
         if (KeyUtil.isActionDown(event) && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT && mBinding.recycler.hasFocus() && isFirstInRow(getCurrentFocus())) return mBinding.rail.requestFocus();
         if (KeyUtil.isActionDown(event) & KeyUtil.isDownKey(event) && getCurrentFocus() == mBinding.title) return mBinding.recycler.getChildAt(0).requestFocus();
+        // 二次开发：在内容区最上面一行按 ↑，焦点到右上角首页源（←/→ 直接切换源，确认键弹出源列表）
+        // 用行号判断是否在第一行：上一行滚出屏幕后系统找不到它，不能靠「往上找不到焦点」来判断
+        if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event) && mBinding.recycler.hasFocus() && mBinding.title.isFocusable()
+                && mBinding.recycler.getSelectedPosition() <= getFirstRowIndex()) return mBinding.title.requestFocus();
         return super.dispatchKeyEvent(event);
     }
 
@@ -648,6 +720,25 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     protected void onResume() {
         super.onResume();
         mClock.start();
+        restoreContentFocus();
+    }
+
+    /** 第一个海报行（ListRow）在列表里的位置；行标题等不能获得焦点的项不算 */
+    private int getFirstRowIndex() {
+        for (int i = 0; i < mAdapter.size(); i++) if (mAdapter.get(i) instanceof ListRow) return i;
+        return -1;
+    }
+
+    // 二次开发：从侧边栏打开片库/设置等页面再返回时，焦点会回到侧边栏按钮上，侧边栏就一直展开。
+    // 返回后把焦点交回内容区，侧边栏收起，按 ← 才展开。内容区没有可聚焦的海报时保持原样。
+    private boolean mBackToContent;
+
+    private void restoreContentFocus() {
+        if (!mBackToContent) return;
+        mBackToContent = false;
+        App.post(() -> {
+            if (mBinding.rail.hasFocus() && mAdapter.size() > 0) mBinding.recycler.requestFocus();
+        }, 100);
     }
 
     @Override

@@ -1,5 +1,8 @@
 package com.fongmi.android.tv.ui.adapter;
 
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.RelativeSizeSpan;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
@@ -68,10 +71,19 @@ public class FlagAdapter extends RecyclerView.Adapter<FlagAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Flag item = mItems.get(position);
-        holder.binding.text.setText(item.getShow());
+        holder.binding.text.setText(getText(item));
         holder.binding.text.setSelected(item.isSelected());
         holder.binding.text.setNextFocusDownId(nextFocusDown);
         holder.binding.getRoot().setOnClickListener(v -> mListener.onItemClick(item));
+    }
+
+    // 二次开发：线路名后面跟测速标签（字号小一点），如「gsm3u8  1080P」
+    private CharSequence getText(Flag item) {
+        String badge = item.getBadge();
+        if (badge.isEmpty()) return item.getShow();
+        SpannableString text = new SpannableString(item.getShow() + "  " + badge);
+        text.setSpan(new RelativeSizeSpan(0.75f), text.length() - badge.length(), text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return text;
     }
 
     public interface OnClickListener {

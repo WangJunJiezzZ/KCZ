@@ -5,20 +5,25 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.api.SiteApi;
+import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.exception.ExtractException;
 import com.fongmi.android.tv.playback.PlaybackResult;
+import com.fongmi.android.tv.playback.vod.LineProbe;
 import com.fongmi.android.tv.playback.vod.VodDetailResult;
 import com.fongmi.android.tv.playback.vod.VodPlayRequest;
 import com.fongmi.android.tv.playback.vod.VodPlaybackController;
 import com.fongmi.android.tv.playback.vod.VodPlaybackHost;
 import com.fongmi.android.tv.playback.vod.VodPlaybackState;
 
+import java.util.Collections;
+
 public class VideoViewModel extends SiteViewModel {
 
     private final MutableLiveData<VodDetailResult> detail;
     private final MutableLiveData<PlaybackResult<VodPlayRequest>> preload;
     private final MutableLiveData<PlaybackResult<VodPlayRequest>> playback;
+    private final MutableLiveData<LineProbe.Report> lineProbe;
     private final ViewModelTaskRunner<TaskType> requestTasks;
     private final VodPlaybackState playbackState;
 
@@ -26,6 +31,7 @@ public class VideoViewModel extends SiteViewModel {
         detail = new MutableLiveData<>();
         preload = new MutableLiveData<>();
         playback = new MutableLiveData<>();
+        lineProbe = new MutableLiveData<>();
         requestTasks = new ViewModelTaskRunner<>(TaskType.class);
         playbackState = new VodPlaybackState();
     }
@@ -40,6 +46,10 @@ public class VideoViewModel extends SiteViewModel {
 
     public LiveData<PlaybackResult<VodPlayRequest>> getPlayback() {
         return playback;
+    }
+
+    public LiveData<LineProbe.Report> getLineProbe() {
+        return lineProbe;
     }
 
     public VodPlaybackController createPlaybackController(VodPlaybackHost host) {
@@ -73,6 +83,16 @@ public class VideoViewModel extends SiteViewModel {
                 error -> output.postValue(new PlaybackResult<>(request, handleError(error))));
     }
 
+    // 二次开发：线路测速，失败或超时也回传空结果，保证控制器不会一直等
+    public void lineProbe(LineProbe.Request request) {
+        requestTasks.execute(
+                TaskType.PROBE,
+                LineProbe.BUDGET_MS + 2000,
+                () -> new LineProbe.Report(request.token(), LineProbe.probeAll(request.targets(), VodConfig.get().getSite(request.key()).getHeader())),
+                lineProbe::postValue,
+                error -> lineProbe.postValue(new LineProbe.Report(request.token(), Collections.emptyMap())));
+    }
+
     private Result handleError(Throwable error) {
         error.printStackTrace();
         return error instanceof ExtractException ? Result.error(error.getMessage()) : Result.empty();
@@ -85,5 +105,5 @@ public class VideoViewModel extends SiteViewModel {
         super.onCleared();
     }
 
-    private enum TaskType {DETAIL, PLAYBACK, PRELOAD}
+    private enum TaskType {DETAIL, PLAYBACK, PRELOAD, PROBE}
 }

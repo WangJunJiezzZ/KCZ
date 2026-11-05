@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
 import android.view.KeyEvent;
@@ -57,6 +58,7 @@ import com.fongmi.android.tv.playback.PlaybackAction;
 import com.fongmi.android.tv.playback.PlaybackIntent;
 import com.fongmi.android.tv.playback.PlaybackReset;
 import com.fongmi.android.tv.playback.PlaybackResult;
+import com.fongmi.android.tv.playback.vod.LineProbe;
 import com.fongmi.android.tv.playback.vod.VodDetailResult;
 import com.fongmi.android.tv.playback.vod.VodPlayRequest;
 import com.fongmi.android.tv.playback.vod.VodPlaybackController;
@@ -88,6 +90,7 @@ import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.Backdrop;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.KeyUtil;
+import com.fongmi.android.tv.utils.NetdiskLogin;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PartUtil;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -103,7 +106,9 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, CustomKeyDownVod.Listener, ParseDialog.Listener, ArrayAdapter.OnClickListener, FlagAdapter.OnClickListener, EpisodeAdapter.OnClickListener, QualityAdapter.OnClickListener, QuickAdapter.OnClickListener, Clock.Callback {
@@ -326,6 +331,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         mBinding.flag.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
+                // 二次开发：程序刚改过选中线路时，刷新列表会把焦点还原到旧按钮并触发这里，不能当成用户选择（会把坏线路选回来来回打转）
+                if (SystemClock.uptimeMillis() < mFlagSelectMuteUntil) return;
                 if (mFlagAdapter.getItemCount() > 0) onItemClick(mFlagAdapter.get(position));
             }
         });
@@ -382,6 +389,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         observeWhenServiceReady(mViewModel.getSearch(), this::onSearchObserved);
         observeWhenServiceReady(mViewModel.getPreload(), this::onPreloadObserved);
         observeWhenServiceReady(mViewModel.getPlayback(), this::onPlaybackObserved);
+        observeWhenServiceReady(mViewModel.getLineProbe(), mVod::onLineProbeResult);
     }
 
     private void onDetailObserved(VodDetailResult result) {
@@ -500,6 +508,24 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
     @Override
     public void requestPreload(VodPlayRequest request) {
         mViewModel.preloadContent(request);
+    }
+
+    @Override
+    public boolean requestLineProbe(LineProbe.Request request) {
+        mViewModel.lineProbe(request);
+        return true;
+    }
+
+    @Override
+    public void showLineProbing(int count) {
+        showProgress();
+        mBinding.progress.status.setText(getString(R.string.line_probing, count));
+        mBinding.progress.status.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void hideLineProbing() {
+        mBinding.progress.status.setVisibility(View.GONE);
     }
 
     @Override
@@ -625,8 +651,16 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
 
     @Override
     public void renderFlags(List<Flag> items) {
+        muteFlagSelect();
         mBinding.flag.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mFlagAdapter.addAll(items);
+    }
+
+    /** 二次开发：程序改动线路列表/选中项后 0.8 秒内忽略焦点引起的切线 */
+    private long mFlagSelectMuteUntil;
+
+    private void muteFlagSelect() {
+        mFlagSelectMuteUntil = SystemClock.uptimeMillis() + 800;
     }
 
     @Override
@@ -636,6 +670,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
 
     @Override
     public void renderFlagSelection(Flag item) {
+        muteFlagSelect();
         mBinding.flag.setSelectedPosition(mFlagAdapter.indexOf(item));
         notifyItemChanged(mBinding.flag, mFlagAdapter);
     }
@@ -1071,13 +1106,23 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
     }
 
     private void showProgress() {
+        setProgressCover();
         mBinding.progress.getRoot().setVisibility(View.VISIBLE);
         App.post(mR3, 0);
         hideCenter();
         hideError();
     }
 
+    // 二次开发：加载时用详情页剧照垫底（复制一份 Drawable，避免两个 ImageView 共用同一个实例互相改尺寸）
+    private void setProgressCover() {
+        Drawable drawable = mBinding.detailBackdrop.getDrawable();
+        Drawable.ConstantState state = drawable == null ? null : drawable.getConstantState();
+        mBinding.progress.cover.setImageDrawable(state == null ? null : state.newDrawable(getResources()).mutate());
+        mBinding.progress.cover.setVisibility(state == null ? View.GONE : View.VISIBLE);
+    }
+
     private void hideProgress() {
+        mBinding.progress.status.setVisibility(View.GONE);
         mBinding.progress.getRoot().setVisibility(View.GONE);
         App.removeCallbacks(mR3);
         Traffic.reset();
@@ -1088,6 +1133,64 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         mBinding.widget.error.setVisibility(View.VISIBLE);
         mBinding.widget.text.setText(text);
         hideProgress();
+    }
+
+    // ===== 二次开发：网盘线路失败 → 查登录状态 → 没登录就当场弹扫码（不自动换线）→ 登录成功后自动重新播放 =====
+
+    private static final int MAX_LOGIN_TRIES = 3;
+    private final Map<String, Integer> mLoginTries = new HashMap<>();
+    private volatile boolean mLoginRunning;
+
+    @Override
+    public boolean handleNetdiskError(String disk, String msg) {
+        if (mLoginRunning) return true; // 已在处理（查状态 / 等扫码），别换线
+        int tries = mLoginTries.getOrDefault(disk, 0);
+        if (tries >= MAX_LOGIN_TRIES) return false; // 防止「登录了仍播不了」时反复弹窗，交回原版换线
+        mLoginTries.put(disk, tries + 1);
+        mLoginRunning = true;
+        setErrorText(getString(R.string.netdisk_login_checking, disk));
+        // 查状态 + 轮询最长 3 分钟，用独立线程，不占公共任务池
+        new Thread(() -> runNetdiskLogin(disk, msg), "NetdiskLogin").start();
+        return true;
+    }
+
+    private void runNetdiskLogin(String disk, String msg) {
+        try {
+            NetdiskLogin.Entry entry = NetdiskLogin.find(disk);
+            if (entry == null) {
+                // 这份配置没有扫码入口：只提示去配置中心登录，不自动换线（没登录就不该切走），用户可手动换
+                App.post(() -> setErrorText(msg + "\n" + getString(R.string.netdisk_login_missing)));
+                return;
+            }
+            // 要登录哪个网盘就弹哪个网盘的扫码（不靠备注猜是否已登录：实测不可靠）
+            // 不能直接在详情页上请求：站源会关掉当前界面再弹码，所以经由透明垫页（见 LoginBridgeActivity）
+            App.post(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                LoginBridgeActivity.start(this, entry);
+                setErrorText(getString(R.string.netdisk_login_waiting, disk));
+            });
+            // 扫码成功后条目备注会变（如「未扫码」→ 已登录信息），每 2 秒查一次
+            for (int i = 0; i < 90 && !isFinishing() && !isDestroyed(); i++) {
+                Thread.sleep(2000);
+                String now = NetdiskLogin.status(entry);
+                if (now != null && !now.equals(entry.remark())) {
+                    App.post(() -> {
+                        if (!isFinishing() && !isDestroyed()) mVod.refresh();
+                    });
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            App.post(() -> setErrorText(msg));
+        } finally {
+            mLoginRunning = false;
+        }
+    }
+
+    private void setErrorText(String text) {
+        if (isFinishing() || isDestroyed()) return;
+        if (mBinding.widget.error.getVisibility() == View.VISIBLE) mBinding.widget.text.setText(text);
     }
 
     private void hideError() {

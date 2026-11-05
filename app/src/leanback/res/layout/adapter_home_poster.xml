@@ -50,6 +50,20 @@
         tools:progress="400"
         tools:visibility="visible" />
 
+    <!-- 分类行末尾的"查看全部"卡片 -->
+    <TextView
+        android:id="@+id/more"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/home_more_bg"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.3"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:text="查看全部\n电影 ›" />
+
     <!-- 继续观看删除模式（长按进入） -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/delete"

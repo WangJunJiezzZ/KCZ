@@ -42,6 +42,7 @@ import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Filter;
 import com.fongmi.android.tv.bean.Func;
 import com.fongmi.android.tv.bean.History;
+import com.fongmi.android.tv.bean.HomeMore;
 import com.fongmi.android.tv.bean.HomeRowTitle;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
@@ -74,6 +75,7 @@ import com.fongmi.android.tv.ui.presenter.HomeRailPresenter;
 import com.fongmi.android.tv.ui.presenter.HomeResumePresenter;
 import com.fongmi.android.tv.ui.presenter.ProgressPresenter;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
+import com.fongmi.android.tv.utils.Backdrop;
 import com.fongmi.android.tv.utils.Clock;
 import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.ImgUtil;
@@ -191,17 +193,20 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public void onFocus(Vod item) {
         String meta = joinMeta(item.getYear(), item.getArea(), item.getTypeName(), item.getRemarks());
-        showBillboard(getHome().getName(), item.getName(), meta, item.getContent(), item.getBackdrop());
+        showBillboard(getHome().getName(), item.getName(), meta, item.getContent(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic());
     }
 
     @Override
     public void onFocus(History item) {
         String meta = joinMeta(item.getSiteName(), item.getVodRemarks());
-        showBillboard(getString(R.string.home_nf_resume_kicker), item.getVodName(), meta, "", item.getVodPic());
+        showBillboard(getString(R.string.home_nf_resume_kicker), item.getVodName(), meta, "", null, item.getVodPic());
     }
 
-    /** 焦点快速移动时只加载最后停留的那一张，避免频繁请求图片 */
-    private void showBillboard(String kicker, String name, String meta, String desc, String pic) {
+    /**
+     * 焦点快速移动时只加载最后停留的那一张，避免频繁请求图片。
+     * 大图优先级：源提供的横版剧照 hd → TMDB 高清剧照 → 海报 poster
+     */
+    private void showBillboard(String kicker, String name, String meta, String desc, String hd, String poster) {
         App.removeCallbacks(mBillboardTask);
         mBillboardTask = () -> {
             if (name.equals(mBinding.billTitle.getText().toString())) return;
@@ -220,7 +225,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 info.animate().alpha(1f).translationX(0f).setDuration(260).start();
             }).start();
             // 背景剧照：新旧两张交叉淡化，而不是直接替换
-            loadBackdrop(pic);
+            if (!TextUtils.isEmpty(hd)) loadBackdrop(hd);
+            else if (!Backdrop.enabled()) loadBackdrop(poster);
+            else Backdrop.find(name, url -> {
+                if (name.equals(mBinding.billTitle.getText().toString())) loadBackdrop(url.isEmpty() ? poster : url);
+            });
         };
         App.post(mBillboardTask, 120);
     }
@@ -391,7 +400,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                     List<Vod> items = SiteApi.categoryContent(site.getKey(), type.getTypeId(), "1", !extend.isEmpty(), extend).getList();
                     if (items.isEmpty()) continue;
                     count++;
-                    App.post(() -> addCategoryRow(token, type.getTypeName(), items));
+                    App.post(() -> addCategoryRow(token, type, items));
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -406,12 +415,18 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         return extend;
     }
 
-    private void addCategoryRow(int token, String name, List<Vod> items) {
+    private void addCategoryRow(int token, com.fongmi.android.tv.bean.Class type, List<Vod> items) {
         if (token != mRowsToken) return;
         ArrayObjectAdapter adapter = new ArrayObjectAdapter(new HomePosterPresenter(this));
         adapter.addAll(0, items);
-        mAdapter.add(new HomeRowTitle(name));
+        adapter.add(new HomeMore(type.getTypeId(), type.getTypeName()));
+        mAdapter.add(new HomeRowTitle(type.getTypeName()));
         mAdapter.add(new ListRow(adapter));
+    }
+
+    @Override
+    public void onMore(HomeMore item) {
+        VodActivity.start(this, getHome().getKey(), mResult, item.getTypeId());
     }
 
     // 二次开发：推荐内容统一放进一行横向滑动的海报（不再按网格分多行）

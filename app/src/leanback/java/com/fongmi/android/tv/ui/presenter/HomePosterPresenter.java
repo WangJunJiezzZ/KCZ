@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.leanback.widget.Presenter;
 
 import com.bumptech.glide.Glide;
+import com.fongmi.android.tv.bean.HomeMore;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.AdapterHomePosterBinding;
 import com.fongmi.android.tv.utils.ImgUtil;
@@ -28,6 +29,8 @@ public class HomePosterPresenter extends Presenter {
     public interface Listener extends VodPresenter.OnClickListener {
 
         void onFocus(Vod item);
+
+        void onMore(HomeMore item);
     }
 
     @NonNull
@@ -38,8 +41,13 @@ public class HomePosterPresenter extends Presenter {
 
     @Override
     public void onBindViewHolder(@NonNull Presenter.ViewHolder viewHolder, Object object) {
-        Vod item = (Vod) object;
         ViewHolder holder = (ViewHolder) viewHolder;
+        if (object instanceof HomeMore more) {
+            bindMore(holder, more);
+            return;
+        }
+        Vod item = (Vod) object;
+        holder.binding.more.setVisibility(View.GONE);
         String badge = item.getRemarks();
         holder.binding.badge.setText(badge);
         holder.binding.badge.setVisibility(TextUtils.isEmpty(badge) ? View.GONE : View.VISIBLE);
@@ -49,6 +57,18 @@ public class HomePosterPresenter extends Presenter {
         holder.view.setOnFocusChangeListener((view, hasFocus) -> {
             if (hasFocus) listener.onFocus(item);
         });
+    }
+
+    private void bindMore(ViewHolder holder, HomeMore more) {
+        Glide.with(holder.binding.image).clear(holder.binding.image);
+        holder.binding.image.setImageDrawable(null);
+        holder.binding.badge.setVisibility(View.GONE);
+        holder.binding.progress.setVisibility(View.GONE);
+        holder.binding.more.setVisibility(View.VISIBLE);
+        holder.binding.more.setText("查看全部\n" + more.getTypeName() + " ›");
+        holder.view.setOnClickListener(view -> listener.onMore(more));
+        holder.view.setOnLongClickListener(null);
+        holder.view.setOnFocusChangeListener(null);
     }
 
     @Override

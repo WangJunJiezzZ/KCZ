@@ -17,6 +17,8 @@ android {
         buildConfigField 'String', 'DEFAULT_VOD_URL', '"' + providers.gradleProperty('customVodUrl').getOrElse('') + '"'
         buildConfigField 'String', 'UPDATE_JSON', '"' + providers.gradleProperty('customUpdateJson').getOrElse('') + '"'
         buildConfigField 'String', 'UPDATE_APK', '"' + providers.gradleProperty('customUpdateApk').getOrElse('') + '"'
+        // 二次开发：TMDB 密钥放在 local.properties 的 tmdbKey（不提交到 GitHub）；云端用 Secret 写入
+        buildConfigField 'String', 'TMDB_KEY', '"' + (localProps['tmdbKey'] ?: '') + '"'
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
         versionCode providers.gradleProperty('customVersionCode').getOrElse('561').toInteger()

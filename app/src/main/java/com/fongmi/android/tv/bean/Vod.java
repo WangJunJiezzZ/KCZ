@@ -151,6 +151,10 @@ public class Vod implements Parcelable, Diffable<Vod> {
         return TextUtils.isEmpty(vodPic) ? "" : vodPic.trim();
     }
 
+    public boolean hasBackdrop() {
+        return !TextUtils.isEmpty(vodBackdrop);
+    }
+
     /** 大图背景：优先横版剧照 vod_backdrop，没有则用海报 vod_pic */
     public String getBackdrop() {
         return TextUtils.isEmpty(vodBackdrop) ? getPic() : vodBackdrop.trim();

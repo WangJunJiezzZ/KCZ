@@ -1,0 +1,80 @@
+package com.fongmi.android.tv.utils;
+
+import android.net.Uri;
+import android.text.TextUtils;
+
+import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.BuildConfig;
+import com.github.catvod.net.OkHttp;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+
+/**
+ * 二次开发：按片名去 TMDB 查高清横版剧照，作为首页 / 详情页的大图背景。
+ * - 国内 api.themoviedb.org 被 DNS 污染，改用备用域名 api.tmdb.org；图片走 image.tmdb.org（国内可访问）
+ * - API 密钥在 local.properties 的 tmdbKey（不提交到 GitHub）；没配置时直接返回空，调用方退回用海报
+ */
+public final class Backdrop {
+
+    private static final String API = "https://api.tmdb.org/3/search/multi";
+    private static final String IMAGE = "https://image.tmdb.org/t/p/w1280";
+    /** 片名 → 剧照地址；"" 表示查过但没有 */
+    private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
+
+    private Backdrop() {
+    }
+
+    public static boolean enabled() {
+        return !TextUtils.isEmpty(BuildConfig.TMDB_KEY);
+    }
+
+    /** 异步查询，结果（可能为空字符串）在主线程回调 */
+    public static void find(String name, Consumer<String> callback) {
+        String key = clean(name);
+        if (!enabled() || key.isEmpty()) {
+            callback.accept("");
+            return;
+        }
+        String cached = CACHE.get(key);
+        if (cached != null) {
+            callback.accept(cached);
+            return;
+        }
+        Task.submit(() -> {
+            String url = search(key);
+            CACHE.put(key, url);
+            App.post(() -> callback.accept(url));
+        });
+    }
+
+    private static String search(String query) {
+        try {
+            String url = API + "?api_key=" + BuildConfig.TMDB_KEY + "&language=zh-CN&include_adult=false&query=" + Uri.encode(query);
+            JSONArray results = new JSONObject(OkHttp.string(url)).optJSONArray("results");
+            if (results == null) return "";
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject item = results.optJSONObject(i);
+                if (item == null || "person".equals(item.optString("media_type"))) continue;
+                String path = item.optString("backdrop_path");
+                if (!TextUtils.isEmpty(path) && !"null".equals(path)) return IMAGE + path;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    /** 去掉"第二季""4K""(2024)""【国语】"这类后缀，提高命中率 */
+    static String clean(String name) {
+        if (name == null) return "";
+        return name.replaceAll("[\\[【(（][^\\]】)）]*[\\]】)）]", " ")
+                .replaceAll("第[一二三四五六七八九十0-9]+[季部]", " ")
+                .replaceAll("(?i)\\b(4K|1080P|HD|蓝光|国语|粤语|中字)\\b", " ")
+                .replaceAll("\\s+", " ").trim();
+    }
+}

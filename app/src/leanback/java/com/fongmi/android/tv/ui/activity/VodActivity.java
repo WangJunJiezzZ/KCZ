@@ -32,6 +32,7 @@ import com.fongmi.android.tv.utils.ResUtil;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.util.List;
 import java.util.Optional;
 
 public class VodActivity extends BaseActivity implements TypeAdapter.OnClickListener {
@@ -45,11 +46,29 @@ public class VodActivity extends BaseActivity implements TypeAdapter.OnClickList
     }
 
     public static void start(Activity activity, String key, Result result) {
+        start(activity, key, result, null);
+    }
+
+    /** 二次开发：typeId 不为空时，打开后直接定位到该分类（首页分类行的"查看全部"） */
+    public static void start(Activity activity, String key, Result result, String typeId) {
         if (result == null || result.getTypes().isEmpty()) return;
         Intent intent = new Intent(activity, VodActivity.class);
         intent.putExtra("key", key);
         intent.putExtra("result", result);
+        intent.putExtra("typeId", typeId);
         activity.startActivity(intent);
+    }
+
+    private void selectInitialType() {
+        String typeId = getIntent().getStringExtra("typeId");
+        if (typeId == null) return;
+        List<Class> types = getResult().getTypes();
+        for (int i = 0; i < types.size(); i++) {
+            if (!typeId.equals(types.get(i).getTypeId())) continue;
+            mBinding.recycler.setSelectedPosition(i);
+            mBinding.pager.setCurrentItem(i, false);
+            return;
+        }
     }
 
     private String getKey() {
@@ -78,6 +97,7 @@ public class VodActivity extends BaseActivity implements TypeAdapter.OnClickList
         setRecyclerView();
         setTypes();
         setPager();
+        selectInitialType();
     }
 
     @Override

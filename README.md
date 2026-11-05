@@ -17,3 +17,8 @@ App 首次打开会自动加载本仓库的 `config.json`（地址写在 TV 仓�
 3. 推送后，在 App 里刷新配置。
 
 本地自测语法：`python -m py_compile py/xxx.py`
+
+## 在电脑上调试源
+
+`python tools/run_local.py py/demo.py [搜索关键词]`：按电视的调用顺序打印每一步返回值。
+

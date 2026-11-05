@@ -5,7 +5,7 @@ name: 编译 APK
 
 on:
   push:
-    branches: [custom, custom-561]
+    branches: [custom, custom-561, custom-556]
   workflow_dispatch:
     inputs:
       publish:
@@ -92,7 +92,7 @@ jobs:
         # 失败时把关键报错摘成 ::error:: 注释，方便在运行概览里直接看到
         run: |
           set -o pipefail
-          # 5.6.1 有"设备 × CPU 架构"两个维度，任务名要写全
+          # 5.5.6 / 5.6.1 有"设备 × CPU 架构"两个维度，任务名要写全
           tasks=":app:assembleLeanbackArm64_v8aRelease :app:assembleLeanbackArmeabi_v7aRelease :app:assembleMobileArm64_v8aRelease :app:assembleMobileArmeabi_v7aRelease"
           if ! bash ./gradlew $tasks --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"; then
             grep -E '(error:|^e: |What went wrong|> Task .* FAILED|Could not|cannot find symbol|does not exist|Unresolved reference|AAPT: error)' "$RUNNER_TEMP/build.log" \

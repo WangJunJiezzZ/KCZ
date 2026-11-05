@@ -11,7 +11,7 @@ WIKI = "https://upload.wikimedia.org/wikipedia/commons"
 VIDEOS = [
     {
         "vod_id": "bbb",
-        "vod_name": "Big Buck Bunny",
+        "vod_name": "大雄兔",
         "vod_pic": f"{WIKI}/c/c5/Big_buck_bunny_poster_big.jpg",
         "vod_remarks": "2008 · 动画",
         "type_id": "anim",
@@ -20,7 +20,7 @@ VIDEOS = [
     },
     {
         "vod_id": "sintel",
-        "vod_name": "Sintel",
+        "vod_name": "辛特尔",
         "vod_pic": f"{WIKI}/8/8f/Sintel_poster.jpg",
         "vod_remarks": "2010 · 奇幻",
         "type_id": "anim",
@@ -29,7 +29,7 @@ VIDEOS = [
     },
     {
         "vod_id": "tos",
-        "vod_name": "Tears of Steel",
+        "vod_name": "钢铁之泪",
         "vod_pic": f"{WIKI}/7/70/Tos-poster.png",
         "vod_remarks": "2012 · 科幻",
         "type_id": "film",
@@ -74,7 +74,7 @@ class Spider(Spider):
         play_url = "#".join(f"{name}${url}" for name, url in v["episodes"])
         detail = to_card(v) | {
             "vod_content": v["vod_content"],
-            "vod_play_from": "直连",
+            "vod_play_from": "官方线路",
             "vod_play_url": play_url,
         }
         return {"list": [detail]}

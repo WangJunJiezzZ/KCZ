@@ -1,5 +1,5 @@
 # 二次开发：云端编译 / 发布「看锤子」电视版
-# - 推送到 custom-561：只编译检查，APK 在本次运行页面底部的 Artifacts 里下载（不推给电视）
+# - 推送到 custom（主分支）或 custom-561：只编译检查，APK 在本次运行页面底部的 Artifacts 里下载（不推给电视）
 # - 手动运行（Actions → 编译 APK → Run workflow）并勾选"发布"：
 #     1. 编译电视版 APK（arm64 + armv7），用你的密钥签名
 #     2. 上传到 GitHub Releases（标签 v版本名）
@@ -9,7 +9,7 @@ name: 编译 APK
 
 on:
   push:
-    branches: [custom-561]
+    branches: [custom, custom-561]
   workflow_dispatch:
     inputs:
       publish:

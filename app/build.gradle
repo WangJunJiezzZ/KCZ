@@ -13,7 +13,9 @@ android {
     compileSdk libs.versions.compileSdk.get().toInteger()
 
     defaultConfig {
-        applicationId "com.fongmi.android.tv"
+        applicationId providers.gradleProperty('customAppId').getOrElse('com.fongmi.android.tv')
+        buildConfigField 'String', 'DEFAULT_VOD_URL', '"' + providers.gradleProperty('customVodUrl').getOrElse('') + '"'
+        buildConfigField 'String', 'UPDATE_REPO', '"' + providers.gradleProperty('customUpdateRepo').getOrElse('FongMi/Release') + '"'
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
         versionCode 556

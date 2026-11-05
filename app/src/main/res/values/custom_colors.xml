@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 二次开发：图标配色 -->
+    <color name="custom_icon_background">#141414</color>
+</resources>

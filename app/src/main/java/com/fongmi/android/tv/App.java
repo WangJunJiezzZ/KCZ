@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.os.HandlerCompat;
 
+import com.fongmi.android.tv.utils.ChineseLocale;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.hook.Hook;
 import com.github.catvod.Init;
@@ -74,8 +75,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
 
     @Override
     protected void attachBaseContext(Context base) {
-        super.attachBaseContext(base);
-        Init.set(base);
+        Context context = ChineseLocale.wrap(base);
+        super.attachBaseContext(context);
+        Init.set(context);
     }
 
     @Override

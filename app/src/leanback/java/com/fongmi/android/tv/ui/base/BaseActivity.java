@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.base;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
+import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.ui.custom.CustomWallView;
+import com.fongmi.android.tv.utils.ChineseLocale;
 import com.fongmi.android.tv.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
@@ -27,6 +29,12 @@ import me.jessyan.autosize.AutoSizeCompat;
 public abstract class BaseActivity extends AppCompatActivity {
 
     protected abstract ViewBinding getBinding();
+
+    // 二次开发：界面固定为简体中文
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(ChineseLocale.wrap(newBase));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

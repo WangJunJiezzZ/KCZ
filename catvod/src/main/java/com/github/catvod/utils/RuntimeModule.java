@@ -454,9 +454,25 @@ public enum RuntimeModule {
             PackageInfo host = Runtime.context().getPackageManager().getPackageInfo(Runtime.context().getPackageName(), signatureFlags());
             Signature[] expected = signatures(host);
             Signature[] actual = signatures(info);
+            if (isUpstreamSigner(actual)) return;
             if (expected == null || actual == null || expected.length == 0 || expected.length != actual.length || !Arrays.asList(expected).containsAll(Arrays.asList(actual))) throw new IOException("Invalid runtime signer");
         } catch (PackageManager.NameNotFoundException e) {
             throw new IOException("Unable to verify runtime signer", e);
+        }
+    }
+
+    // 二次开发：宿主改用自己的签名后，仍信任原作者 FongMi/Release 发布的运行时插件（固定证书 SHA-256）
+    private static final String UPSTREAM_RUNTIME_SIGNER = "7223de1aae9e09110a3007c980af081b1609a3fec5bbbdfa7d9cedb3525110a1";
+
+    private static boolean isUpstreamSigner(Signature[] actual) {
+        if (actual == null || actual.length != 1) return false;
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(actual[0].toByteArray());
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest) hex.append(String.format("%02x", b));
+            return UPSTREAM_RUNTIME_SIGNER.equals(hex.toString());
+        } catch (Exception e) {
+            return false;
         }
     }
 

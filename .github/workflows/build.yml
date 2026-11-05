@@ -1,17 +1,25 @@
-# 二次开发：云端编译 APK
-# - 推送到 custom 分支：自动编译，APK 在本次运行页面底部的 Artifacts 里下载
-# - 手动运行并勾选"发布"：额外创建 GitHub Release（App 内"检查更新"读取这里）
+# 二次开发：云端编译 / 发布「看锤子」电视版
+# - 推送到 custom-561：只编译检查，APK 在本次运行页面底部的 Artifacts 里下载（不推给电视）
+# - 手动运行（Actions → 编译 APK → Run workflow）并勾选"发布"：
+#     1. 编译电视版 APK（arm64 + armv7），用你的密钥签名
+#     2. 上传到 GitHub Releases（标签 v版本名）
+#     3. 生成版本信息 leanback.json 到 release 分支，刷新 jsDelivr 缓存
+#   电视上的看锤子下次打开就会提示更新。发布前记得把 gradle.properties 里的 customVersionCode / customVersionName +1
 name: 编译 APK
 
 on:
   push:
-    branches: [custom, custom-561]
+    branches: [custom-561]
   workflow_dispatch:
     inputs:
       publish:
-        description: 发布为 Release（App 内检查更新可见）
+        description: 发布更新（电视上的 App 会提示更新）
         type: boolean
         default: false
+      notes:
+        description: 更新说明（显示在电视的更新弹窗里）
+        type: string
+        default: 界面和功能优化
 
 permissions:
   contents: write
@@ -29,6 +37,25 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: TV
+
+      - name: 读取版本号
+        id: ver
+        run: |
+          code=$(grep -E '^customVersionCode=' TV/gradle.properties | cut -d= -f2 | tr -d '\r ')
+          name=$(grep -E '^customVersionName=' TV/gradle.properties | cut -d= -f2 | tr -d '\r ')
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "版本：$name ($code)"
+
+      - name: 检查版本号是否已发布过
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.ver.outputs.name }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::版本 v${{ steps.ver.outputs.name }} 已经发布过了。请先在 gradle.properties 里把 customVersionCode 和 customVersionName 加 1 再发布"
+            exit 1
+          fi
 
       - name: 检出播放器内核源码 (FongMi/media)
         uses: actions/checkout@v4
@@ -55,7 +82,6 @@ jobs:
         working-directory: media
         run: |
           tasks=$(sed -e 's/-release\.aar$//' -e 's/^/:/' -e 's/$/:assembleRelease/' ../TV/.github/media-modules.txt | tr '\n' ' ')
-          echo "tasks: $tasks"
           bash ./gradlew $tasks --stacktrace
 
       - name: 复制 aar 到 app/libs
@@ -66,7 +92,6 @@ jobs:
             if [ -z "$file" ]; then echo "::error::找不到 $name"; exit 1; fi
             cp "$file" TV/app/libs/
           done < TV/.github/media-modules.txt
-          ls -la TV/app/libs
 
       - name: 写入签名配置
         env:
@@ -86,46 +111,60 @@ jobs:
             echo "storePassword=$KEY_PASSWORD"
           } > TV/local.properties
 
-      - name: 编译 APK（电视版 + 手机版）
+      - name: 编译电视版 APK
         working-directory: TV
-        # 上游仓库里 gradlew 没有可执行权限，用 bash 调用
-        # 失败时把关键报错摘成 ::error:: 注释，方便在运行概览里直接看到
+        # 上游仓库里 gradlew 没有可执行权限，用 bash 调用；失败时把关键报错摘成注释
         run: |
           set -o pipefail
-          # 5.6.1 有"设备 × CPU 架构"两个维度，任务名要写全
-          tasks=":app:assembleLeanbackArm64_v8aRelease :app:assembleLeanbackArmeabi_v7aRelease :app:assembleMobileArm64_v8aRelease :app:assembleMobileArmeabi_v7aRelease"
+          tasks=":app:assembleLeanbackArm64_v8aRelease :app:assembleLeanbackArmeabi_v7aRelease"
           if ! bash ./gradlew $tasks --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"; then
-            grep -E '(error:|^e: |What went wrong|> Task .* FAILED|Could not|cannot find symbol|does not exist|Unresolved reference|AAPT: error)' "$RUNNER_TEMP/build.log" \
+            grep -E '(error:|^e: |What went wrong|> Task .* FAILED|Could not|cannot find symbol|No space left|OutOfMemory)' "$RUNNER_TEMP/build.log" \
               | grep -v '^\s*at ' | head -n 40 | while IFS= read -r line; do echo "::error::${line:0:900}"; done
             grep -A 12 'What went wrong' "$RUNNER_TEMP/build.log" | head -n 40 | while IFS= read -r line; do echo "::warning::${line:0:900}"; done
+            df -h / | while IFS= read -r line; do echo "::warning::磁盘 $line"; done
             exit 1
           fi
 
       - name: 收集 APK
-        id: apk
         run: |
           mkdir -p out
-          find TV/app/build/outputs/apk -name '*.apk' -path '*/release/*' -exec cp {} out/ \;
+          find TV/app/build/outputs/apk -name 'leanback-*.apk' -path '*/release/*' -exec cp {} out/ \;
           ls -la out
-          version=$(grep -m1 'versionName' TV/app/build.gradle | sed -E 's/.*"([^"]+)".*/\1/')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: 上传 APK（Artifacts）
         uses: actions/upload-artifact@v4
         with:
-          name: apk-${{ steps.apk.outputs.version }}-${{ github.run_number }}
+          name: kanchuizi-${{ steps.ver.outputs.name }}-${{ github.run_number }}
           path: out/*.apk
 
-      - name: 发布 Release
+      - name: 发布到 GitHub Releases
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.apk.outputs.version }}
-          name: ${{ steps.apk.outputs.version }}
+          tag_name: v${{ steps.ver.outputs.name }}
+          name: 看锤子 ${{ steps.ver.outputs.name }}
           target_commitish: ${{ github.sha }}
+          make_latest: true
           files: out/*.apk
-          body: |
-            # 電視版 ${{ steps.apk.outputs.version }}
-            - 云端自动编译
-            # 手機版 ${{ steps.apk.outputs.version }}
-            - 云端自动编译
+          body: ${{ inputs.notes }}
+
+      - name: 更新版本信息（release 分支的 leanback.json）并刷新 jsDelivr
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NAME: ${{ steps.ver.outputs.name }}
+          CODE: ${{ steps.ver.outputs.code }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          mkdir rel && cd rel
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q --depth 1 origin release 2>/dev/null; then git checkout -q -b release FETCH_HEAD; else git checkout -q --orphan release; fi
+          jq -n --arg name "$NAME" --argjson code "$CODE" --arg desc "$NOTES" '{name: $name, code: $code, desc: $desc}' > leanback.json
+          cat leanback.json
+          git add leanback.json
+          git commit -q -m "发布 $NAME"
+          git push -q origin HEAD:release
+          curl -fsS "https://purge.jsdelivr.net/gh/${GITHUB_REPOSITORY}@release/leanback.json" || true

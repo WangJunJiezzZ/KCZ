@@ -22,11 +22,11 @@ import java.io.File;
 
 public class Updater implements Download.Callback, UpdateListener {
 
-    private final Download download;
+    private Download download;
     private UpdateDialog dialog;
 
     private Updater() {
-        this.download = Download.create(getApk(), getFile());
+        this.download = Download.create(getApk(null), getFile());
     }
 
     public static Updater create() {
@@ -41,8 +41,8 @@ public class Updater implements Download.Callback, UpdateListener {
         return Github.getJson(BuildConfig.FLAVOR_mode);
     }
 
-    private String getApk() {
-        return Github.getApk(BuildConfig.FLAVOR_mode + "-" + BuildConfig.FLAVOR_abi);
+    private String getApk(String base) {
+        return Github.getApk(base, BuildConfig.FLAVOR_mode + "-" + BuildConfig.FLAVOR_abi);
     }
 
     public Updater force() {
@@ -63,6 +63,8 @@ public class Updater implements Download.Callback, UpdateListener {
             String desc = object.optString("desc");
             int code = object.optInt("code");
             if (code <= BuildConfig.VERSION_CODE) return;
+            // 二次开发：JSON 里可以用 "apk" 字段指定下载地址，换下载服务器不用重新打包
+            download = Download.create(getApk(object.optString("apk")), getFile());
             App.post(() -> show(activity, name, desc));
         } catch (Exception e) {
             e.printStackTrace();

@@ -51,7 +51,7 @@ jobs:
         run: |
           tasks=$(sed -e 's/-release\.aar$//' -e 's/^/:/' -e 's/$/:assembleRelease/' ../TV/.github/media-modules.txt | tr '\n' ' ')
           echo "tasks: $tasks"
-          ./gradlew $tasks --stacktrace
+          bash ./gradlew $tasks --stacktrace
 
       - name: 复制 aar 到 app/libs
         run: |
@@ -83,7 +83,8 @@ jobs:
 
       - name: 编译 APK（电视版 + 手机版）
         working-directory: TV
-        run: ./gradlew :app:assembleLeanbackRelease :app:assembleMobileRelease --stacktrace
+        # 上游仓库里 gradlew 没有可执行权限，用 bash 调用
+        run: bash ./gradlew :app:assembleLeanbackRelease :app:assembleMobileRelease --stacktrace
 
       - name: 收集 APK
         id: apk

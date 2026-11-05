@@ -93,12 +93,15 @@ jobs:
             cp "$file" TV/app/libs/
           done < TV/.github/media-modules.txt
 
-      - name: 写入签名配置
+      - name: 写入签名配置和 TMDB 密钥
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
         run: |
+          # 没配 TMDB_KEY 也能编译，只是首页没有 TMDB 高清剧照（退回海报）
+          if [ -z "$TMDB_KEY" ]; then echo "::warning::没配置 TMDB_KEY Secret，这次编译的 App 首页不会显示 TMDB 高清剧照"; fi
           if [ -z "$KEYSTORE_BASE64" ]; then
             echo "::error::还没配置签名密钥。请在仓库 Settings -> Secrets and variables -> Actions 添加 KEYSTORE_BASE64 / KEY_ALIAS / KEY_PASSWORD"
             exit 1
@@ -109,6 +112,7 @@ jobs:
             echo "storeFile=$RUNNER_TEMP/release.p12"
             echo "keyAlias=$KEY_ALIAS"
             echo "storePassword=$KEY_PASSWORD"
+            echo "tmdbKey=$TMDB_KEY"
           } > TV/local.properties
 
       - name: 编译电视版 APK

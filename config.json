@@ -1,15 +1,5 @@
 {
-  "sites": [
-    {
-      "key": "py_demo",
-      "name": "示例片库(Python)",
-      "type": 3,
-      "api": "./py/demo.py",
-      "searchable": 1,
-      "quickSearch": 1,
-      "filterable": 0
-    }
-  ],
+  "sites": [],
   "lives": [],
   "parses": []
 }

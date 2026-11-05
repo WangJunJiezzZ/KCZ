@@ -1,6 +1,6 @@
 """在电脑上模拟电视调用一个 Python 源，按顺序打印每一步返回的数据。
 
-用法：python tools/run_local.py py/demo.py [搜索关键词]
+用法：python tools/run_local.py py/xxx.py [搜索关键词]
 """
 import importlib.util
 import json
@@ -24,7 +24,9 @@ def show(title, data):
 
 
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else "py/demo.py"
+    if len(sys.argv) < 2:
+        return print("用法：python tools/run_local.py py/xxx.py [搜索关键词]")
+    path = sys.argv[1]
     keyword = sys.argv[2] if len(sys.argv) > 2 else ""
     spider = load(path)
     spider.init("")

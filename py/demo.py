@@ -13,6 +13,8 @@ VIDEOS = [
         "vod_id": "bbb",
         "vod_name": "大雄兔",
         "vod_pic": f"{WIKI}/c/c5/Big_buck_bunny_poster_big.jpg",
+        # 可选：横版剧照，看锤子首页/详情页的大图背景优先用它（不填就用 vod_pic 海报）
+        "vod_backdrop": f"{WIKI}/thumb/2/2b/Big.Buck.Bunny.-.Frank.Rinky.Gimera.png/1280px-Big.Buck.Bunny.-.Frank.Rinky.Gimera.png",
         "vod_remarks": "2008 · 动画",
         "type_id": "anim",
         "vod_content": "Blender 基金会开源短片（CC BY 3.0）。",
@@ -45,8 +47,8 @@ CLASSES = [
 
 
 def to_card(v):
-    """列表里的一张海报卡片只需要这 4 个字段"""
-    return {k: v[k] for k in ("vod_id", "vod_name", "vod_pic", "vod_remarks")}
+    """列表里的一张海报卡片：4 个必填字段 + 可选的横版剧照 vod_backdrop"""
+    return {k: v[k] for k in ("vod_id", "vod_name", "vod_pic", "vod_backdrop", "vod_remarks") if k in v}
 
 
 class Spider(Spider):

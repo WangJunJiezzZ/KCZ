@@ -344,6 +344,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mBinding.title.setSelected(true);
         App.post(() -> mBinding.title.setFocusable(true), 500);
         if (!mBinding.title.hasFocus()) mBinding.recycler.requestFocus();
+        // 二次开发：首页没有任何海报（还没填配置 / 加载失败）时，焦点交给左侧导航，避免遥控器无响应
+        App.post(() -> {
+            if (getCurrentFocus() == null) mBinding.rail.requestFocus();
+        }, 300);
     }
 
     private void getVideo() {

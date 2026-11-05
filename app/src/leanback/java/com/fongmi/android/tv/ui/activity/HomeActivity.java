@@ -3,10 +3,14 @@ package com.fongmi.android.tv.ui.activity;
 import android.annotation.SuppressLint;
 import android.app.SearchManager;
 import android.content.Intent;
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewParent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,6 +21,7 @@ import androidx.leanback.widget.HorizontalGridView;
 import androidx.leanback.widget.ItemBridgeAdapter;
 import androidx.leanback.widget.ListRow;
 import androidx.leanback.widget.OnChildViewHolderSelectedListener;
+import androidx.leanback.widget.VerticalGridView;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
@@ -57,6 +62,10 @@ import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.ui.presenter.FuncPresenter;
 import com.fongmi.android.tv.ui.presenter.HeaderPresenter;
 import com.fongmi.android.tv.ui.presenter.HistoryPresenter;
+import com.fongmi.android.tv.ui.presenter.HomeHeaderPresenter;
+import com.fongmi.android.tv.ui.presenter.HomePosterPresenter;
+import com.fongmi.android.tv.ui.presenter.HomeRailPresenter;
+import com.fongmi.android.tv.ui.presenter.HomeResumePresenter;
 import com.fongmi.android.tv.ui.presenter.ProgressPresenter;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.utils.Clock;
@@ -79,14 +88,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-public class HomeActivity extends BaseActivity implements CustomTitleView.Listener, VodPresenter.OnClickListener, FuncPresenter.OnClickListener, HistoryPresenter.OnClickListener {
+public class HomeActivity extends BaseActivity implements CustomTitleView.Listener, HomePosterPresenter.Listener, FuncPresenter.OnClickListener, HomeResumePresenter.Listener {
 
     private ActivityHomeBinding mBinding;
     private ArrayObjectAdapter mHistoryAdapter;
     private ArrayObjectAdapter mFuncAdapter;
     private ArrayObjectAdapter mAdapter;
-    private HistoryPresenter mPresenter;
+    private HomeResumePresenter mPresenter;
+    private HomeRailPresenter mRailPresenter;
     private SiteViewModel mViewModel;
+    private Runnable mBillboardTask;
+    private boolean mRailExpanded;
     private Result mResult;
     private Clock mClock;
 
@@ -123,6 +135,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         PermissionUtil.requestNotify(this);
         DLNARendererService.start(this);
         Updater.create().start(this);
+        setBillboardEffect();
         setRecyclerView();
         setViewModel();
         setAdapter();
@@ -137,10 +150,78 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mBinding.recycler.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
-                mBinding.toolbar.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
                 if (mPresenter.isDelete()) setHistoryDelete(false);
             }
         });
+        // 左侧导航获得焦点时展开（显示文字 + 深色面板），离开时收起
+        mBinding.getRoot().getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> setRailExpanded(mBinding.rail.hasFocus()));
+    }
+
+    // ===== 二次开发：奈飞风格首页 =====
+
+    @Override
+    protected boolean customWall() {
+        return false;
+    }
+
+    private void setBillboardEffect() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) mBinding.backdrop.setRenderEffect(RenderEffect.createBlurEffect(36, 36, Shader.TileMode.CLAMP));
+        else mBinding.backdrop.setAlpha(0.35f);
+    }
+
+    private void setRailExpanded(boolean expanded) {
+        if (mRailExpanded == expanded) return;
+        mRailExpanded = expanded;
+        mRailPresenter.setExpanded(expanded);
+        mBinding.rail.setBackgroundColor(expanded ? 0xF20B0B0B : 0x00000000);
+        mFuncAdapter.notifyArrayItemRangeChanged(0, mFuncAdapter.size());
+    }
+
+    @Override
+    public void onFocus(Vod item) {
+        String meta = joinMeta(item.getYear(), item.getArea(), item.getTypeName(), item.getRemarks());
+        showBillboard(getHome().getName(), item.getName(), meta, item.getContent(), item.getPic());
+    }
+
+    @Override
+    public void onFocus(History item) {
+        String meta = joinMeta(item.getSiteName(), item.getVodRemarks());
+        showBillboard(getString(R.string.home_nf_resume_kicker), item.getVodName(), meta, "", item.getVodPic());
+    }
+
+    /** 焦点快速移动时只加载最后停留的那一张，避免频繁请求图片 */
+    private void showBillboard(String kicker, String name, String meta, String desc, String pic) {
+        App.removeCallbacks(mBillboardTask);
+        mBillboardTask = () -> {
+            mBinding.kicker.setText(kicker);
+            mBinding.billTitle.setText(name);
+            mBinding.billMeta.setText(meta);
+            mBinding.billMeta.setVisibility(TextUtils.isEmpty(meta) ? View.GONE : View.VISIBLE);
+            String text = desc == null ? "" : desc.replaceAll("<[^>]+>", "").replaceAll("\\s+", " ").trim();
+            mBinding.billDesc.setText(text);
+            mBinding.billDesc.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
+            mBinding.keyart.setVisibility(View.VISIBLE);
+            ImgUtil.load(name, pic, mBinding.keyart);
+            ImgUtil.load(name, pic, mBinding.backdrop);
+        };
+        App.post(mBillboardTask, 180);
+    }
+
+    private static boolean isFirstInRow(View focused) {
+        if (focused == null) return false;
+        View child = focused;
+        ViewParent parent = focused.getParent();
+        while (parent instanceof View && !(parent instanceof HorizontalGridView)) {
+            child = (View) parent;
+            parent = parent.getParent();
+        }
+        return parent instanceof HorizontalGridView grid && grid.getChildAdapterPosition(child) == 0;
+    }
+
+    private static String joinMeta(String... parts) {
+        List<String> items = new ArrayList<>();
+        for (String part : parts) if (!TextUtils.isEmpty(part) && !items.contains(part.trim())) items.add(part.trim());
+        return TextUtils.join("  ·  ", items);
     }
 
     private void checkAction(Intent intent) {
@@ -165,14 +246,20 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @SuppressLint("RestrictedApi")
     private void setRecyclerView() {
         CustomSelector selector = new CustomSelector();
-        selector.addPresenter(Integer.class, new HeaderPresenter());
+        selector.addPresenter(Integer.class, new HomeHeaderPresenter());
         selector.addPresenter(String.class, new ProgressPresenter());
-        selector.addPresenter(Vod.class, new VodPresenter(this, Style.list()));
-        selector.addPresenter(ListRow.class, new CustomRowPresenter(16), VodPresenter.class);
-        selector.addPresenter(ListRow.class, new CustomRowPresenter(16), FuncPresenter.class);
-        selector.addPresenter(ListRow.class, new CustomRowPresenter(16, FocusHighlight.ZOOM_FACTOR_SMALL, HorizontalGridView.FOCUS_SCROLL_ALIGNED), HistoryPresenter.class);
+        selector.addPresenter(Vod.class, new HomePosterPresenter(this));
+        selector.addPresenter(ListRow.class, new CustomRowPresenter(12, FocusHighlight.ZOOM_FACTOR_SMALL, HorizontalGridView.FOCUS_SCROLL_ALIGNED), HomePosterPresenter.class);
+        selector.addPresenter(ListRow.class, new CustomRowPresenter(12, FocusHighlight.ZOOM_FACTOR_SMALL, HorizontalGridView.FOCUS_SCROLL_ALIGNED), HomeResumePresenter.class);
         mBinding.recycler.setAdapter(new ItemBridgeAdapter(mAdapter = new ArrayObjectAdapter(selector)));
-        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(16));
+        mBinding.recycler.setVerticalSpacing(ResUtil.dp2px(8));
+        // 当前行贴顶：焦点行的顶部固定在内容区顶部下方 30dp（留给行标题），上一行完整移出画面
+        mBinding.recycler.setWindowAlignment(VerticalGridView.WINDOW_ALIGN_NO_EDGE);
+        mBinding.recycler.setWindowAlignmentOffsetPercent(VerticalGridView.WINDOW_ALIGN_OFFSET_PERCENT_DISABLED);
+        mBinding.recycler.setWindowAlignmentOffset(ResUtil.dp2px(30));
+        mBinding.recycler.setItemAlignmentOffsetPercent(0);
+        mBinding.rail.setAdapter(new ItemBridgeAdapter(mFuncAdapter = new ArrayObjectAdapter(mRailPresenter = new HomeRailPresenter(this))));
+        mBinding.rail.setVerticalSpacing(ResUtil.dp2px(6));
     }
 
     private void setViewModel() {
@@ -185,10 +272,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void setAdapter() {
-        mHistoryAdapter = new ArrayObjectAdapter(mPresenter = new HistoryPresenter(this));
-        mAdapter.add(new ListRow(mFuncAdapter = new ArrayObjectAdapter(new FuncPresenter(this))));
-        mAdapter.add(R.string.home_history);
-        mAdapter.add(R.string.home_recommend);
+        mHistoryAdapter = new ArrayObjectAdapter(mPresenter = new HomeResumePresenter(this));
+        mAdapter.add(R.string.home_nf_history);
+        mAdapter.add(R.string.home_nf_recommend);
     }
 
     private void setTitle() {
@@ -249,10 +335,14 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mViewModel.homeContent();
     }
 
+    // 二次开发：推荐内容统一放进一行横向滑动的海报（不再按网格分多行）
     private void addVideo(Result result) {
-        Style style = result.getStyle(getHome().getStyle());
-        if (style.isList()) mAdapter.addAll(mAdapter.size(), result.getList());
-        else addGrid(result.getList(), style);
+        List<Vod> items = result.getList();
+        if (items.isEmpty()) return;
+        ArrayObjectAdapter adapter = new ArrayObjectAdapter(new HomePosterPresenter(this));
+        adapter.addAll(0, items);
+        mAdapter.add(mAdapter.size(), new ListRow(adapter));
+        onFocus(items.get(0));
     }
 
     private void addGrid(List<Vod> items, Style style) {
@@ -286,7 +376,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         int historyIndex = getHistoryIndex();
         int recommendIndex = getRecommendIndex();
         boolean exist = recommendIndex - historyIndex == 2;
-        if (renew) mHistoryAdapter = new ArrayObjectAdapter(mPresenter = new HistoryPresenter(this));
+        if (renew) mHistoryAdapter = new ArrayObjectAdapter(mPresenter = new HomeResumePresenter(this));
         if ((items.isEmpty() && exist) || (renew && exist)) mAdapter.removeItems(historyIndex, 1);
         if ((!items.isEmpty() && !exist) || (renew && exist)) mAdapter.add(historyIndex, new ListRow(mHistoryAdapter));
         mHistoryAdapter.setItems(items, new BaseDiffCallback<History>());
@@ -305,11 +395,11 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private int getHistoryIndex() {
-        return mAdapter.indexOf(R.string.home_history) + 1;
+        return mAdapter.indexOf(R.string.home_nf_history) + 1;
     }
 
     private int getRecommendIndex() {
-        return mAdapter.indexOf(R.string.home_recommend) + 1;
+        return mAdapter.indexOf(R.string.home_nf_recommend) + 1;
     }
 
     private void setLogo() {
@@ -447,6 +537,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (KeyUtil.isMenuKey(event)) showDialog();
+        // 二次开发：在一行的第一张海报上按 ←，焦点进入左侧导航
+        if (KeyUtil.isActionDown(event) && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT && mBinding.recycler.hasFocus() && isFirstInRow(getCurrentFocus())) return mBinding.rail.requestFocus();
         if (KeyUtil.isActionDown(event) & KeyUtil.isDownKey(event) && getCurrentFocus() == mBinding.title) return mBinding.recycler.getChildAt(0).requestFocus();
         return super.dispatchKeyEvent(event);
     }

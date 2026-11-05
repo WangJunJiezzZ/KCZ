@@ -1,57 +1,164 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 二次开发：奈飞风格首页（左侧导航 + 顶部大图 + 横向海报行） -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@color/home_bg">
 
-    <androidx.appcompat.widget.LinearLayoutCompat
-        android:id="@+id/toolbar"
+    <!-- ===== 顶部大图区 ===== -->
+    <FrameLayout
+        android:id="@+id/billboard"
         android:layout_width="match_parent"
+        android:layout_height="300dp">
+
+        <!-- 氛围背景：当前焦点影片海报放大（Android 12+ 会做模糊） -->
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/backdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="end"
+            android:alpha="0.75"
+            android:scaleType="centerCrop" />
+
+        <!-- 清晰海报 -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/keyart"
+            android:layout_width="120dp"
+            android:layout_height="180dp"
+            android:layout_gravity="end|top"
+            android:layout_marginTop="58dp"
+            android:layout_marginEnd="64dp"
+            android:elevation="12dp"
+            android:scaleType="centerCrop"
+            android:visibility="invisible"
+            app:shapeAppearanceOverlay="@style/HomeCardShape" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="start"
+            android:background="@drawable/home_scrim_left" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/home_scrim_bottom" />
+
+        <!-- 文字信息 -->
+        <LinearLayout
+            android:layout_width="440dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="96dp"
+            android:layout_marginTop="22dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/wordmark"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.14"
+                android:text="@string/app_name"
+                android:textColor="@color/home_gold"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/kicker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="40dp"
+                android:letterSpacing="0.08"
+                android:textColor="@color/home_text_dim"
+                android:textSize="12sp"
+                tools:text="今日推荐" />
+
+            <TextView
+                android:id="@+id/billTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:shadowColor="#80000000"
+                android:shadowRadius="12"
+                android:textColor="@color/white"
+                android:textSize="30sp"
+                android:textStyle="bold"
+                tools:text="钢铁之泪" />
+
+            <TextView
+                android:id="@+id/billMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:singleLine="true"
+                android:textColor="#E5E5E5"
+                android:textSize="13sp"
+                tools:text="2012 · 科幻 · 更新至 12 集" />
+
+            <TextView
+                android:id="@+id/billDesc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:ellipsize="end"
+                android:lineSpacingMultiplier="1.3"
+                android:maxLines="2"
+                android:textColor="#CCCCCC"
+                android:textSize="13sp"
+                tools:text="简介" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ===== 右上角：当前首页源（按菜单键或点击可切换）+ 时钟 ===== -->
+    <LinearLayout
+        android:id="@+id/toolbar"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:animateLayoutChanges="true"
+        android:layout_gravity="end|top"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="32dp"
         android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="24dp"
-        android:paddingTop="24dp"
-        android:paddingEnd="24dp"
-        android:paddingBottom="8dp">
+        android:orientation="horizontal">
 
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/logo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="12dp"
-            android:src="@drawable/ic_logo" />
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp" />
 
         <com.fongmi.android.tv.ui.custom.CustomTitleView
             android:id="@+id/title"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:layout_weight="1"
+            android:layout_marginEnd="20dp"
             android:ellipsize="marquee"
             android:focusable="false"
+            android:maxWidth="260dp"
             android:singleLine="true"
             android:text="@string/app_name"
-            android:textColor="@color/white"
-            android:textSize="24sp" />
+            android:textColor="@color/home_text_dim"
+            android:textSize="13sp" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/clock"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/white"
-            android:textSize="24sp"
-            tools:text="09:20:00" />
+            android:textSize="15sp"
+            tools:text="09:20" />
+    </LinearLayout>
 
-    </androidx.appcompat.widget.LinearLayoutCompat>
-
+    <!-- ===== 内容行 ===== -->
     <com.fongmi.android.tv.ui.custom.ProgressLayout
         android:id="@+id/progressLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:layout_marginStart="80dp"
+        android:layout_marginTop="236dp">
 
         <androidx.leanback.widget.VerticalGridView
             android:id="@+id/recycler"
@@ -59,12 +166,26 @@
             android:layout_height="match_parent"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:paddingStart="24dp"
+            android:paddingStart="16dp"
             android:paddingTop="8dp"
-            android:paddingEnd="24dp"
-            android:paddingBottom="24dp"
+            android:paddingEnd="32dp"
+            android:paddingBottom="40dp"
             app:focusOutEnd="true"
             app:focusOutFront="true" />
 
     </com.fongmi.android.tv.ui.custom.ProgressLayout>
-</androidx.appcompat.widget.LinearLayoutCompat>
+
+    <!-- ===== 左侧导航（放在最后，保证盖在内容上面） ===== -->
+    <androidx.leanback.widget.VerticalGridView
+        android:id="@+id/rail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="16dp"
+        android:background="@drawable/home_rail_bg"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp" />
+
+</FrameLayout>

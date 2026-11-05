@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 海报卡片：竖版 2:3，选中时白边（片名显示在顶部大图区） -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="100dp"
+    android:layout_height="150dp"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:foreground="@drawable/home_card_focus">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#1F1F1F"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/HomeCardShape" />
+
+    <TextView
+        android:id="@+id/badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="6dp"
+        android:background="@drawable/home_badge"
+        android:maxWidth="86dp"
+        android:paddingStart="5dp"
+        android:paddingTop="1dp"
+        android:paddingEnd="5dp"
+        android:paddingBottom="1dp"
+        android:singleLine="true"
+        android:textColor="#E5E5E5"
+        android:textSize="10sp"
+        android:visibility="gone"
+        tools:text="更新至12集"
+        tools:visibility="visible" />
+
+    <ProgressBar
+        android:id="@+id/progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        android:max="1000"
+        android:progressDrawable="@drawable/home_progress"
+        android:visibility="gone"
+        tools:progress="400"
+        tools:visibility="visible" />
+
+    <!-- 继续观看删除模式（长按进入） -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/delete"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000"
+        android:padding="34dp"
+        android:src="@drawable/ic_vod_delete"
+        android:visibility="gone"
+        app:tint="@color/white" />
+</FrameLayout>

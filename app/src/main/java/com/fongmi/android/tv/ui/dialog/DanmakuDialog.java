@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Danmaku;
 import com.fongmi.android.tv.databinding.DialogDanmakuBinding;
 import com.fongmi.android.tv.player.PlayerManager;
@@ -27,6 +28,7 @@ public final class DanmakuDialog extends BaseBottomSheetDialog implements Danmak
     private final DanmakuAdapter adapter;
     private DialogDanmakuBinding binding;
     private PlayerManager player;
+    private Runnable onShowChanged;
 
     public DanmakuDialog() {
         this.adapter = new DanmakuAdapter(this);
@@ -39,6 +41,18 @@ public final class DanmakuDialog extends BaseBottomSheetDialog implements Danmak
     public DanmakuDialog player(PlayerManager player) {
         this.player = player;
         return this;
+    }
+
+    /** 弹幕开关变化后通知页面（手机版用来刷新控制栏图标）。 */
+    public DanmakuDialog onShowChanged(Runnable onShowChanged) {
+        this.onShowChanged = onShowChanged;
+        return this;
+    }
+
+    /** 打开 / 关闭弹幕显示：记住设置并立即作用到播放器。 */
+    static void setShow(PlayerManager player, boolean show) {
+        DanmakuSetting.putShow(show);
+        player.setDanmakuEnabled(show);
     }
 
     public void show(FragmentActivity activity) {
@@ -60,10 +74,23 @@ public final class DanmakuDialog extends BaseBottomSheetDialog implements Danmak
         binding.recycler.post(() -> binding.recycler.scrollToPosition(adapter.getSelected()));
         binding.recycler.setVisibility(adapter.getItemCount() == 0 ? View.GONE : View.VISIBLE);
         binding.search.setVisibility(player.getMetadata() == null || DanmakuSetting.getEffectiveApiUrl().isEmpty() ? View.GONE : View.VISIBLE);
+        updateToggle();
+        binding.toggle.requestFocus();
+    }
+
+    private void updateToggle() {
+        binding.toggle.setText(DanmakuSetting.isShow() ? R.string.danmaku_on : R.string.danmaku_off);
+    }
+
+    private void onToggle(View view) {
+        setShow(player, !DanmakuSetting.isShow());
+        updateToggle();
+        if (onShowChanged != null) onShowChanged.run();
     }
 
     @Override
     protected void initEvent() {
+        binding.toggle.setOnClickListener(this::onToggle);
         binding.search.setOnClickListener(this::onSearch);
         binding.choose.setOnClickListener(this::onChoose);
         binding.setting.setOnClickListener(this::onSetting);
@@ -87,6 +114,11 @@ public final class DanmakuDialog extends BaseBottomSheetDialog implements Danmak
     @Override
     public void onItemClick(Danmaku item) {
         player.toggleDanmaku(item);
+        // 弹幕关着时手动选了一条，说明想看：顺便打开
+        if (player.haveDanmaku() && !DanmakuSetting.isShow()) {
+            setShow(player, true);
+            if (onShowChanged != null) onShowChanged.run();
+        }
         dismiss();
     }
 

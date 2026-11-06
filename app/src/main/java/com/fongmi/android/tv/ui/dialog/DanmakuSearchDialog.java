@@ -67,8 +67,10 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
         binding.recycler.setItemAnimator(null);
         binding.recycler.setHasFixedSize(false);
         binding.recycler.addItemDecoration(new SpaceItemDecoration(1, 16));
-        Util.showKeyboard(binding.keyword);
         setKeyword(getTitle());
+        // 有片名就直接按片名搜（电视上不用再按搜索）；没有片名才弹键盘
+        if (getKeyword().isEmpty() || TextUtils.isEmpty(DanmakuSetting.getEffectiveApiUrl())) Util.showKeyboard(binding.keyword);
+        else search();
     }
 
     @Override
@@ -87,6 +89,7 @@ public final class DanmakuSearchDialog extends BaseBottomSheetDialog implements 
     @Override
     public void onItemClick(Danmaku item) {
         player.setDanmaku(item);
+        if (!DanmakuSetting.isShow()) DanmakuDialog.setShow(player, true);
         dismiss();
     }
 

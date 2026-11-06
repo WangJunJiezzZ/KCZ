@@ -24,6 +24,20 @@
             android:textColor="?attr/colorOnSurface"
             android:textSize="16sp" />
 
+        <!-- 二次开发：弹幕总开关（和控制栏的弹幕图标共用同一个设置） -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:background="?attr/selectableItemBackground"
+            android:minHeight="40dp"
+            android:gravity="center"
+            android:paddingHorizontal="8dp"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="14sp"
+            tools:text="@string/danmaku_on" />
+
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/search"
             android:layout_width="wrap_content"

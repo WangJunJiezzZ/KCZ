@@ -60,8 +60,17 @@ public class DanmakuAdapter extends RecyclerView.Adapter<DanmakuAdapter.ViewHold
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Danmaku item = mItems.get(position);
-        holder.binding.text.setText(item.getName());
+        holder.binding.text.setText(displayName(item, position));
         holder.binding.text.setSelected(item.isSelected());
+    }
+
+    /** 二次开发：源推送 / 源自带的弹幕只有地址没有名字，显示成看得懂的文字 */
+    private static String displayName(Danmaku item, int position) {
+        String name = item.getName();
+        if (!name.equals(item.getUrl()) || !name.contains("://")) return name;
+        if (name.contains("wexautodanmu")) return "源自动匹配弹幕";
+        if (name.contains("wexdanmu")) return "源推送弹幕";
+        return "弹幕 " + (position + 1);
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {

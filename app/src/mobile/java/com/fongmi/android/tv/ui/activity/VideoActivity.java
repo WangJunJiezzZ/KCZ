@@ -1001,7 +1001,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onDanmaku() {
-        DanmakuDialog.create().player(player()).show(this);
+        DanmakuDialog.create().player(player()).onShowChanged(this::checkDanmakuImg).show(this);
         hideControl();
     }
 
@@ -1293,6 +1293,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void showControl() {
         if (service() == null || isInPictureInPictureMode()) return;
         mBinding.control.danmaku.setVisibility(isLock() || !player().haveDanmaku() ? View.GONE : View.VISIBLE);
+        checkDanmakuImg(); // 弹幕弹窗里也能开关，显示控制栏时同步图标
         mBinding.control.setting.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);
         mBinding.control.right.rotate.setVisibility(isFullscreen() && !isLock() ? View.VISIBLE : View.GONE);
         mBinding.control.keep.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);

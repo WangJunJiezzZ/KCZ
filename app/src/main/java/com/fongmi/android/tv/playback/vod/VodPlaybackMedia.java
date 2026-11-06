@@ -25,9 +25,14 @@ public final class VodPlaybackMedia {
     public static void searchDanmaku(Result result, History history, Episode episode, Consumer<Danmaku> set, Consumer<Danmaku> add) {
         if (!DanmakuApi.canSearch()) return;
         if (VodConfig.get().getSite(result.getKey()).getDanmaku() == 0) return;
-        DanmakuApi.search(history.getVodName(), episode.getName(), danmaku -> {
-            if (DanmakuSetting.isSpiderFirst() && !result.getDanmaku().isEmpty()) add.accept(danmaku);
-            else set.accept(danmaku);
-        });
+        // 第一条直接加载，其余放进弹幕列表，弹窗里可以直接换，不用再手动搜
+        DanmakuApi.search(history.getVodName(), episode.getName(), items -> {
+            if (items.isEmpty()) return;
+            boolean keepSpider = DanmakuSetting.isSpiderFirst() && !result.getDanmaku().isEmpty();
+            for (int i = 0; i < items.size(); i++) {
+                if (i == 0 && !keepSpider) set.accept(items.get(i));
+                else add.accept(items.get(i));
+            }
+        }, error -> {});
     }
 }

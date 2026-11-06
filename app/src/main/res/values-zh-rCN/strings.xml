@@ -62,6 +62,8 @@
     <string name="play_switch_site">正在切换站源至「<xliff:g name="name">%s</xliff:g>」</string>
     <string name="line_probing">正在测速选线（<xliff:g name="count">%d</xliff:g> 条）</string>
     <string name="home_browse">浏览全部</string>
+    <string name="danmaku_on">弹幕：开</string>
+    <string name="danmaku_off">弹幕：关</string>
     <string name="home_browse_all">全部分类</string>
     <string name="netdisk_login_opening">没有登录<xliff:g name="disk">%s</xliff:g>网盘，正在打开扫码登录…</string>
     <string name="netdisk_login_checking">播放失败，正在检查<xliff:g name="disk">%s</xliff:g>网盘登录状态…</string>

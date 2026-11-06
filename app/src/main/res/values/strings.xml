@@ -62,6 +62,8 @@
     <string name="play_switch_site">Switching site to <xliff:g name="name">%s</xliff:g></string>
     <string name="line_probing">Testing <xliff:g name="count">%d</xliff:g> lines…</string>
     <string name="home_browse">Browse</string>
+    <string name="danmaku_on">Danmaku: On</string>
+    <string name="danmaku_off">Danmaku: Off</string>
     <string name="home_browse_all">All categories</string>
     <string name="netdisk_login_opening">Not logged in to <xliff:g name="disk">%s</xliff:g>, opening QR login…</string>
     <string name="netdisk_login_checking">Checking <xliff:g name="disk">%s</xliff:g> login…</string>

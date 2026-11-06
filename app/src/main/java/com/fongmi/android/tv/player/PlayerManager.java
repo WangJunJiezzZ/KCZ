@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.player;
 
 import android.net.Uri;
+import android.os.SystemClock;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
@@ -59,6 +60,8 @@ public class PlayerManager implements ParseCallback {
     private Player player;
 
     private DanmakuConfig danmakuConfig;
+    private Danmaku pendingDanmaku;
+    private long pendingDanmakuAt;
     private long pendingStartPositionMs;
     private boolean danmakuEnabled;
     private boolean initTrack;
@@ -537,6 +540,7 @@ public class PlayerManager implements ParseCallback {
         ensureEngine(spec.checkUa());
         pendingPreload = null;
         initTrack = false;
+        applyPendingDanmaku();
         engine.start(spec, startPositionMs);
         notifyDanmakuSourceChanged();
         App.post(runnable, timeout);
@@ -565,9 +569,22 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void setDanmaku(Danmaku item) {
-        if (spec == null) return;
+        if (spec == null) {
+            // 二次开发：源（如 🐮 的自动弹幕）推送得比播放器准备好还早，先记下，开播时再用
+            pendingDanmaku = item;
+            pendingDanmakuAt = SystemClock.elapsedRealtime();
+            return;
+        }
         spec.selectDanmaku(item);
         notifyDanmakuSourceChanged();
+    }
+
+    private void applyPendingDanmaku() {
+        Danmaku item = pendingDanmaku;
+        pendingDanmaku = null;
+        if (item == null || spec == null || spec.getSelectedDanmaku() != null) return;
+        if (SystemClock.elapsedRealtime() - pendingDanmakuAt > 30000) return;
+        spec.selectDanmaku(item);
     }
 
     public void toggleDanmaku(Danmaku item) {

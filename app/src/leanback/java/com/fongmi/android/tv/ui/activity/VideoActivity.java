@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
 import android.view.KeyEvent;
@@ -21,6 +22,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 import androidx.leanback.widget.OnChildViewHolderSelectedListener;
+import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaMetadata;
@@ -1140,52 +1142,91 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
     private static final int MAX_LOGIN_TRIES = 3;
     private final Map<String, Integer> mLoginTries = new HashMap<>();
     private volatile boolean mLoginRunning;
+    // 每次处理分配一个编号：新的处理开始后，旧的后台查询自动作废（关掉二维码后换源 / 换线不再被挡住）
+    private volatile int mLoginGeneration;
+    private Thread mLoginTask;
+    private String mLoginDisk = "";
+    private long mLoginStartedAt;
 
     @Override
     public boolean handleNetdiskError(String disk, String msg) {
-        if (mLoginRunning) return true; // 已在处理（查状态 / 等扫码），别换线
+        if (mLoginRunning && shouldKeepCurrentLogin(disk)) return true; // 二维码还开着 / 刚开始处理：别打断
         int tries = mLoginTries.getOrDefault(disk, 0);
         if (tries >= MAX_LOGIN_TRIES) return false; // 防止「登录了仍播不了」时反复弹窗，交回原版换线
+        cancelNetdiskLogin();
         mLoginTries.put(disk, tries + 1);
         mLoginRunning = true;
+        mLoginDisk = disk;
+        mLoginStartedAt = SystemClock.elapsedRealtime();
+        int token = mLoginGeneration;
         setErrorText(getString(R.string.netdisk_login_checking, disk));
         // 查状态 + 轮询最长 3 分钟，用独立线程，不占公共任务池
-        new Thread(() -> runNetdiskLogin(disk, msg), "NetdiskLogin").start();
+        mLoginTask = new Thread(() -> runNetdiskLogin(disk, msg, token), "NetdiskLogin");
+        mLoginTask.start();
         return true;
     }
 
-    private void runNetdiskLogin(String disk, String msg) {
+    /**
+     * 正在处理时又来一次网盘失败：只有「二维码还盖在详情页上」或「同一网盘、刚开始处理（5 秒内）」才忽略。
+     * 详情页在前台说明二维码已关掉、用户自己换了源或线路，应该重新处理（换成夸克就弹夸克的码）。
+     */
+    private boolean shouldKeepCurrentLogin(String disk) {
+        if (!getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) return true;
+        return disk.equals(mLoginDisk) && SystemClock.elapsedRealtime() - mLoginStartedAt < 5000;
+    }
+
+    private void cancelNetdiskLogin() {
+        mLoginGeneration++;
+        mLoginRunning = false;
+        if (mLoginTask != null) mLoginTask.interrupt();
+        mLoginTask = null;
+    }
+
+    private boolean isCurrentLogin(int token) {
+        return token == mLoginGeneration && !isFinishing() && !isDestroyed();
+    }
+
+    private void runNetdiskLogin(String disk, String msg, int token) {
         try {
             NetdiskLogin.Entry entry = NetdiskLogin.find(disk);
+            if (!isCurrentLogin(token)) return;
             if (entry == null) {
                 // 这份配置没有扫码入口：只提示去配置中心登录，不自动换线（没登录就不该切走），用户可手动换
-                App.post(() -> setErrorText(msg + "\n" + getString(R.string.netdisk_login_missing)));
+                App.post(() -> { if (isCurrentLogin(token)) setErrorText(msg + "\n" + getString(R.string.netdisk_login_missing)); });
                 return;
             }
             // 要登录哪个网盘就弹哪个网盘的扫码（不靠备注猜是否已登录：实测不可靠）
             // 不能直接在详情页上请求：站源会关掉当前界面再弹码，所以经由透明垫页（见 LoginBridgeActivity）
             App.post(() -> {
-                if (isFinishing() || isDestroyed()) return;
+                if (!isCurrentLogin(token)) return;
                 LoginBridgeActivity.start(this, entry);
                 setErrorText(getString(R.string.netdisk_login_waiting, disk));
             });
             // 扫码成功后条目备注会变（如「未扫码」→ 已登录信息），每 2 秒查一次
-            for (int i = 0; i < 90 && !isFinishing() && !isDestroyed(); i++) {
+            for (int i = 0; i < 90 && isCurrentLogin(token); i++) {
                 Thread.sleep(2000);
+                if (!isCurrentLogin(token)) return;
                 String now = NetdiskLogin.status(entry);
                 if (now != null && !now.equals(entry.remark())) {
                     NetdiskRank.markOk(disk); // 扫码登录成功：以后这个网盘的线路排前面
                     App.post(() -> {
-                        if (!isFinishing() && !isDestroyed()) mVod.refresh();
+                        if (isCurrentLogin(token)) mVod.refresh();
                     });
                     return;
                 }
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // 被新的处理取代
         } catch (Exception e) {
             e.printStackTrace();
-            App.post(() -> setErrorText(msg));
+            App.post(() -> { if (isCurrentLogin(token)) setErrorText(msg); });
         } finally {
-            mLoginRunning = false;
+            App.post(() -> {
+                if (token == mLoginGeneration) {
+                    mLoginRunning = false;
+                    mLoginTask = null;
+                }
+            });
         }
     }
 

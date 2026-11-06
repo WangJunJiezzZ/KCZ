@@ -44,7 +44,7 @@ import java.util.List;
 public class Billboard {
 
     /** 等待剧照时背景的透明度 */
-    private static final float DIM_ALPHA = 0.3f;
+    private static final float DIM_ALPHA = 0.6f;
     /** 海报垫底时背景的透明度（模糊海报再压暗，保证文字和海报卡片突出） */
     private static final float POSTER_BG_ALPHA = 0.55f;
     /** 把海报缩到这么小再放大铺满，系统缩放的平滑效果就是柔和的模糊（API 24 也能用，不依赖 RenderEffect） */
@@ -55,8 +55,10 @@ public class Billboard {
     private static final float STAGE_WIDTH = 0.85f;
     /** 剧照区高度：内容行从 236dp 开始，第一行标题约 30dp，剧照底边落在第一行卡片顶上 */
     private static final int STAGE_HEIGHT_DP = 276;
+    /** 剧照最多被裁掉的高度比例（上下各一半） */
+    private static final float STAGE_MAX_CROP = 0.2f;
     /** 往下翻到后面几行时剧照区的透明度（注意力放在卡片上） */
-    private static final float STAGE_DIM_ALPHA = 0.35f;
+    private static final float STAGE_DIM_ALPHA = 0.75f;
 
     private final Activity activity;
     private final View stage;
@@ -91,8 +93,12 @@ public class Billboard {
 
     /** 剧照区：屏幕宽度的 85% × 到卡片行上方；左边渐隐占 45% 宽度（片名、简介压在上面），底部渐隐占 40% 高度（太高会把人脸也压暗） */
     private void fitStage() {
-        int width = Math.round(ResUtil.getScreenWidth() * STAGE_WIDTH);
-        int height = Math.min(ResUtil.dp2px(STAGE_HEIGHT_DP), width * 9 / 16);
+        int height = ResUtil.dp2px(STAGE_HEIGHT_DP);
+        // 高度被卡片行限死，宽度太大时 16:9 剧照会被 centerCrop 裁掉上下（人头被切）：
+        // 宽度最多到「裁掉 20% 高度」为止，再不超过屏幕的 85%
+        int maxWidth = Math.round(height * 16f / 9f / (1f - STAGE_MAX_CROP));
+        int width = Math.min(Math.round(ResUtil.getScreenWidth() * STAGE_WIDTH), maxWidth);
+        height = Math.min(height, width * 9 / 16);
         setSize(stage, width, height);
         setSize(stage.findViewById(com.fongmi.android.tv.R.id.stageFadeLeft), Math.round(width * 0.45f), height);
         setSize(stage.findViewById(com.fongmi.android.tv.R.id.stageFadeBottom), width, Math.round(height * 0.4f));

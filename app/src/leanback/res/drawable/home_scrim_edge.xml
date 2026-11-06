@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 剧照左边缘渐隐：左端纯黑（与背景同色），右端透明 -->
+<!-- 二次开发：全屏剧照的左侧压暗（奈飞电视版做法）：左侧文字区较暗，到画面中间以后基本透明，右半边保持原图清晰 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
         android:angle="0"
-        android:centerColor="#990B0B0B"
+        android:centerColor="#8C0B0B0B"
+        android:centerX="0.38"
         android:endColor="#000B0B0B"
-        android:startColor="#FF0B0B0B" />
+        android:startColor="#F20B0B0B" />
 </shape>

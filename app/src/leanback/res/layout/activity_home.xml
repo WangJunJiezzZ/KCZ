@@ -14,24 +14,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- 背景剧照：当前选中影片的图片，清晰铺在右侧（和 HTML 设计稿一致），一直铺到屏幕底部 -->
-        <FrameLayout
-            android:layout_width="740dp"
+        <!-- 二次开发：背景剧照全屏 16:9（和剧照原比例一致，不裁切不放大，像奈飞一样清晰）；
+             左侧用宽渐变压暗保证文字可读。原来只铺右侧 740dp，剧照要放大 1.5 倍并裁掉两边，所以发软 -->
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/backdrop"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="end">
+            android:scaleType="centerCrop" />
 
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/backdrop"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop" />
-
-            <!-- 剧照自己的左边缘：从纯黑渐变到透明，和左侧黑色区域无缝衔接 -->
-            <View
-                android:layout_width="380dp"
-                android:layout_height="match_parent"
-                android:background="@drawable/home_scrim_edge" />
-        </FrameLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/home_scrim_edge" />
 
         <!-- 二次开发：查不到横版剧照时，右侧显示清晰的竖版海报卡片（背景则是同一张海报模糊压暗），不把小海报放大铺满 -->
         <com.google.android.material.imageview.ShapeableImageView

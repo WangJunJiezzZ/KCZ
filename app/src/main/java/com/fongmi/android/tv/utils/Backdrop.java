@@ -28,8 +28,11 @@ import java.util.function.Consumer;
 public final class Backdrop {
 
     private static final String API = "https://api.tmdb.org/3/search/multi";
-    /** 二次开发：1080P 及以下用 1280 宽；屏幕更宽（4K 电视）用原图，免得放大发软 */
-    private static final String IMAGE = "https://image.tmdb.org/t/p/" + (ResUtil.getScreenWidth() > 1920 ? "original" : "w1280");
+    /**
+     * 二次开发：一律用原图（通常 1920 或 3840 宽）。背景已改成全屏 16:9，1280 宽的图在 1080P 上也要放大 1.5 倍、发软；
+     * Glide 会按控件尺寸缩小解码，不会多占内存，只是下载稍大（有预加载兜着）
+     */
+    private static final String IMAGE = "https://image.tmdb.org/t/p/original";
     /** 片名 → 剧照地址；"" 表示查过但没有 */
     private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
 
@@ -60,20 +63,52 @@ public final class Backdrop {
             return;
         }
         EXECUTOR.submit(() -> {
-            String url = "";
-            String used = key;
-            // 二次开发：一种写法查不到就换下一种（去掉 -副标题、冒号后半段、3D、年份等），提高命中率
-            for (String query : queries(key)) {
-                used = query;
-                url = search(query, y);
-                if (!url.isEmpty()) break;
-            }
-            CACHE.put(cacheKey, url);
-            Log.d(TAG, key + (y > 0 ? "(" + y + ")" : "") + (used.equals(key) ? "" : " (用「" + used + "」)") + " -> " + (url.isEmpty() ? "(无剧照，用海报)" : url));
-            String result = url;
+            String result = lookup(key, y, cacheKey);
             App.post(() -> callback.accept(result));
         });
     }
+
+    /**
+     * 二次开发：预取（焦点旁边几部片子的剧照）。走单独的单线程低优先级通道，不和正在看的那部抢线程；
+     * 查到了在主线程回调 onUrl（只在有剧照时回调），调用方再让 Glide 预下载图片。
+     */
+    public static void prefetch(String name, String year, Consumer<String> onUrl) {
+        String key = clean(name);
+        int y = parseYear(year);
+        if (!enabled() || key.isEmpty()) return;
+        String cacheKey = y > 0 ? key + "#" + y : key;
+        String cached = CACHE.get(cacheKey);
+        if (cached != null) {
+            if (!cached.isEmpty()) onUrl.accept(cached);
+            return;
+        }
+        if (!PENDING.add(cacheKey)) return;
+        PREFETCH.submit(() -> {
+            try {
+                String url = CACHE.containsKey(cacheKey) ? CACHE.get(cacheKey) : lookup(key, y, cacheKey);
+                if (!url.isEmpty()) App.post(() -> onUrl.accept(url));
+            } finally {
+                PENDING.remove(cacheKey);
+            }
+        });
+    }
+
+    /** 查询并写缓存（后台线程调用）：一种写法查不到就换下一种（去掉 -副标题、冒号后半段、3D、年份等） */
+    private static String lookup(String key, int y, String cacheKey) {
+        String url = "";
+        String used = key;
+        for (String query : queries(key)) {
+            used = query;
+            url = search(query, y);
+            if (!url.isEmpty()) break;
+        }
+        CACHE.put(cacheKey, url);
+        Log.d(TAG, key + (y > 0 ? "(" + y + ")" : "") + (used.equals(key) ? "" : " (用「" + used + "」)") + " -> " + (url.isEmpty() ? "(无剧照，用海报)" : url));
+        return url;
+    }
+
+    private static final java.util.Set<String> PENDING = ConcurrentHashMap.newKeySet();
+    private static final ExecutorService PREFETCH = Executors.newSingleThreadExecutor();
 
     /** 取出 4 位年份（"2024"、"2024-05"、"2024年" 都行），没有返回 0 */
     static int parseYear(String text) {

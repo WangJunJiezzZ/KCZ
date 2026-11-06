@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.animation.DecelerateInterpolator;
 import android.view.ViewParent;
 
 import androidx.annotation.NonNull;
@@ -24,6 +25,7 @@ import androidx.leanback.widget.FocusHighlight;
 import androidx.leanback.widget.HorizontalGridView;
 import androidx.leanback.widget.ItemBridgeAdapter;
 import androidx.leanback.widget.ListRow;
+import androidx.leanback.widget.ObjectAdapter;
 import androidx.core.content.ContextCompat;
 import androidx.leanback.widget.OnChildViewHolderSelectedListener;
 import androidx.leanback.widget.VerticalGridView;
@@ -33,6 +35,10 @@ import androidx.viewbinding.ViewBinding;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.transition.DrawableCrossFadeFactory;
 import com.fongmi.android.tv.App;
@@ -209,6 +215,38 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     public void onFocus(Vod item) {
         String meta = joinMeta(item.getYear(), item.getArea(), item.getTypeName(), item.getRemarks());
         showBillboard(item.getSite() != null ? item.getSiteName() : getHome().getName(), item.getName(), meta, item.getContent(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic(), item.getYear());
+        prefetchNeighbors(item);
+    }
+
+    // ===== 二次开发：预加载焦点旁边的剧照，移过去时直接从内存显示（奈飞式即时切换） =====
+    private static final int[] PREFETCH_OFFSETS = {1, 2, 3, -1};
+
+    private void prefetchNeighbors(Vod item) {
+        int pos = mBinding.recycler.getSelectedPosition();
+        if (pos < 0 || pos >= mAdapter.size() || !(mAdapter.get(pos) instanceof ListRow row)) return;
+        ObjectAdapter items = row.getAdapter();
+        int index = -1;
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i) == item) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) return;
+        for (int offset : PREFETCH_OFFSETS) {
+            int i = index + offset;
+            if (i < 0 || i >= items.size() || !(items.get(i) instanceof Vod vod)) continue;
+            if (vod.hasBackdrop()) preloadBackdrop(vod.getBackdrop());
+            else Backdrop.prefetch(vod.getName(), vod.getYear(), this::preloadBackdrop);
+        }
+    }
+
+    /** 按背景控件同样的尺寸和裁切预下载解码进内存缓存，之后 loadBackdrop 命中同一个缓存键 */
+    private void preloadBackdrop(String url) {
+        int width = mBinding.backdrop.getWidth();
+        int height = mBinding.backdrop.getHeight();
+        if (TextUtils.isEmpty(url) || width <= 0 || height <= 0 || isFinishing() || isDestroyed()) return;
+        Glide.with(this).load(ImgUtil.getUrl(url)).centerCrop().preload(width, height);
     }
 
     @Override
@@ -310,9 +348,34 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         RequestBuilder<Drawable> builder = Glide.with(mBinding.backdrop)
                 .load(ImgUtil.getUrl(pic))
                 .placeholder(snapshotBackdrop())
-                .transition(DrawableTransitionOptions.with(new DrawableCrossFadeFactory.Builder(450).setCrossFadeEnabled(true).build()));
+                .transition(DrawableTransitionOptions.with(new DrawableCrossFadeFactory.Builder(600).setCrossFadeEnabled(true).build()));
         if (blur) builder = builder.override(BLUR_WIDTH, BLUR_HEIGHT);
+        else builder = builder.listener(new RequestListener<>() {
+            @Override
+            public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean isFirstResource) {
+                return false;
+            }
+
+            @Override
+            public boolean onResourceReady(@NonNull Drawable resource, @NonNull Object model, Target<Drawable> target, @NonNull DataSource dataSource, boolean isFirstResource) {
+                startPushIn();
+                return false;
+            }
+        });
         builder.centerCrop().into(mBinding.backdrop);
+    }
+
+    /**
+     * 二次开发：新剧照出现时从 1.04 倍缓慢缩回原大小（配合交叉淡化，奈飞式的轻微推镜感）。
+     * 只用于清晰剧照（目标透明度就是 1）：cancel 会打断 setBackdropAlpha 的恢复动画，所以透明度在这里一起带到 1，
+     * 否则预加载命中内存、图片同步到达时，背景会停在压暗状态
+     */
+    private void startPushIn() {
+        View view = mBinding.backdrop;
+        view.animate().cancel();
+        view.setScaleX(1.04f);
+        view.setScaleY(1.04f);
+        view.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(1600).setInterpolator(new DecelerateInterpolator()).start();
     }
 
     /**

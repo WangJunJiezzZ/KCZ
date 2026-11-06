@@ -586,7 +586,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         mBinding.video.requestFocus();
         App.removeCallbacks(mR4);
         setArtwork(item.getPic());
-        showDetailBackdrop(item.getName(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic());
+        showDetailBackdrop(item.getName(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic(), item.getYear());
         checkKeepImg();
         setText(item);
         updateKeep();
@@ -604,7 +604,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         if (!name.isEmpty()) mBinding.name.setText(name);
         if (!name.isEmpty()) setPartAdapter();
         if (!pic.isEmpty()) setArtwork();
-        if (!pic.isEmpty()) showDetailBackdrop(name, null, pic);
+        if (!pic.isEmpty()) showDetailBackdrop(name, null, pic, "");
         updateKeep();
     }
 
@@ -616,17 +616,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
     }
 
     private void initDetailBackdrop() {
-        showDetailBackdrop(getName(), null, getPic());
+        showDetailBackdrop(getName(), null, getPic(), "");
     }
 
     /** 大图优先级：源提供的横版剧照 hd → TMDB 高清剧照 → 海报 poster */
-    private void showDetailBackdrop(String name, String hd, String poster) {
+    private void showDetailBackdrop(String name, String hd, String poster, String year) {
         if (hd != null && !hd.isEmpty()) {
             ImgUtil.load(name, hd, mBinding.detailBackdrop);
         } else if (!Backdrop.enabled()) {
             if (poster != null && !poster.isEmpty()) ImgUtil.load(name, poster, mBinding.detailBackdrop);
         } else {
-            Backdrop.find(name, url -> {
+            Backdrop.find(name, year, url -> {
                 String pic = url.isEmpty() ? poster : url;
                 if (pic != null && !pic.isEmpty() && !isFinishing()) ImgUtil.load(name, pic, mBinding.detailBackdrop);
             });

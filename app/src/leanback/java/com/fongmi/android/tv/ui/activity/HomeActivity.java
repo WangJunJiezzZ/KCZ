@@ -208,20 +208,20 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public void onFocus(Vod item) {
         String meta = joinMeta(item.getYear(), item.getArea(), item.getTypeName(), item.getRemarks());
-        showBillboard(item.getSite() != null ? item.getSiteName() : getHome().getName(), item.getName(), meta, item.getContent(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic());
+        showBillboard(item.getSite() != null ? item.getSiteName() : getHome().getName(), item.getName(), meta, item.getContent(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic(), item.getYear());
     }
 
     @Override
     public void onFocus(History item) {
         String meta = joinMeta(item.getSiteName(), item.getVodRemarks());
-        showBillboard(getString(R.string.home_nf_resume_kicker), item.getVodName(), meta, "", null, item.getVodPic());
+        showBillboard(getString(R.string.home_nf_resume_kicker), item.getVodName(), meta, "", null, item.getVodPic(), "");
     }
 
     /**
      * 焦点快速移动时只加载最后停留的那一张，避免频繁请求图片。
      * 大图优先级：源提供的横版剧照 hd → TMDB 高清剧照 → 海报 poster
      */
-    private void showBillboard(String kicker, String name, String meta, String desc, String hd, String poster) {
+    private void showBillboard(String kicker, String name, String meta, String desc, String hd, String poster, String year) {
         App.removeCallbacks(mBillboardTask);
         mBillboardTask = () -> {
             // 用立即更新的变量判断"当前影片"，不依赖带动画的片名文字（快速切换时动画会被打断）
@@ -251,7 +251,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 hideKeyart();
                 mBinding.backdrop.animate().cancel();
                 mBinding.backdrop.animate().alpha(DIM_ALPHA).setDuration(200).start();
-                Backdrop.find(name, url -> {
+                Backdrop.find(name, year, url -> {
                     if (token != mBackdropToken) return;
                     if (url.isEmpty()) showPosterFallback(poster);
                     else showBackdrop(url);

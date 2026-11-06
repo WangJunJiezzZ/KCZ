@@ -28,7 +28,8 @@ import java.util.function.Consumer;
 public final class Backdrop {
 
     private static final String API = "https://api.tmdb.org/3/search/multi";
-    private static final String IMAGE = "https://image.tmdb.org/t/p/w1280";
+    /** 二次开发：1080P 及以下用 1280 宽；屏幕更宽（4K 电视）用原图，免得放大发软 */
+    private static final String IMAGE = "https://image.tmdb.org/t/p/" + (ResUtil.getScreenWidth() > 1920 ? "original" : "w1280");
     /** 片名 → 剧照地址；"" 表示查过但没有 */
     private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
 
@@ -41,12 +42,19 @@ public final class Backdrop {
 
     /** 异步查询，结果（可能为空字符串）在主线程回调 */
     public static void find(String name, Consumer<String> callback) {
+        find(name, "", callback);
+    }
+
+    /** year：源给的年份（如 "2024"），用来在同名结果里挑对的那一部；没有就传空 */
+    public static void find(String name, String year, Consumer<String> callback) {
         String key = clean(name);
+        int y = parseYear(year);
         if (!enabled() || key.isEmpty()) {
             callback.accept("");
             return;
         }
-        String cached = CACHE.get(key);
+        String cacheKey = y > 0 ? key + "#" + y : key;
+        String cached = CACHE.get(cacheKey);
         if (cached != null) {
             callback.accept(cached);
             return;
@@ -57,14 +65,21 @@ public final class Backdrop {
             // 二次开发：一种写法查不到就换下一种（去掉 -副标题、冒号后半段、3D、年份等），提高命中率
             for (String query : queries(key)) {
                 used = query;
-                url = search(query);
+                url = search(query, y);
                 if (!url.isEmpty()) break;
             }
-            CACHE.put(key, url);
-            Log.d(TAG, key + (used.equals(key) ? "" : " (用「" + used + "」)") + " -> " + (url.isEmpty() ? "(无剧照，用海报)" : url));
+            CACHE.put(cacheKey, url);
+            Log.d(TAG, key + (y > 0 ? "(" + y + ")" : "") + (used.equals(key) ? "" : " (用「" + used + "」)") + " -> " + (url.isEmpty() ? "(无剧照，用海报)" : url));
             String result = url;
             App.post(() -> callback.accept(result));
         });
+    }
+
+    /** 取出 4 位年份（"2024"、"2024-05"、"2024年" 都行），没有返回 0 */
+    static int parseYear(String text) {
+        if (TextUtils.isEmpty(text)) return 0;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(19|20)\\d{2}").matcher(text);
+        return m.find() ? Integer.parseInt(m.group()) : 0;
     }
 
     /**
@@ -93,21 +108,51 @@ public final class Backdrop {
     /** 独立线程池：App 公共任务池只有 5 个线程，常被配置加载 / 爬虫占满，剧照查询排不上队 */
     private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2);
 
-    private static String search(String query) {
+    /**
+     * 在 TMDB 结果里挑一张剧照。二次开发：不再直接取第一个有剧照的结果，而是打分：
+     * 片名完全一致 +2；年份一致 +3、差一年 +2（剧集首播和源给的年份常差一年）；年份差太多 -3。
+     * 同分保持 TMDB 原顺序（它本身按热度排）。解决同名片（如不同年代的同名电影/剧）拿错剧照。
+     */
+    private static String search(String query, int year) {
         try {
             String url = API + "?api_key=" + BuildConfig.TMDB_KEY + "&language=zh-CN&include_adult=false&query=" + Uri.encode(query);
             JSONArray results = new JSONObject(OkHttp.string(url)).optJSONArray("results");
             if (results == null) return "";
+            String best = "";
+            int bestScore = Integer.MIN_VALUE;
             for (int i = 0; i < results.length(); i++) {
                 JSONObject item = results.optJSONObject(i);
                 if (item == null || "person".equals(item.optString("media_type"))) continue;
                 String path = item.optString("backdrop_path");
-                if (!TextUtils.isEmpty(path) && !"null".equals(path)) return IMAGE + path;
+                if (TextUtils.isEmpty(path) || "null".equals(path)) continue;
+                int score = score(item, query, year);
+                if (score > bestScore) {
+                    best = IMAGE + path;
+                    bestScore = score;
+                }
             }
+            return best;
         } catch (Exception e) {
             Log.w(TAG, "查询失败：" + query, e);
         }
         return "";
+    }
+
+    static int score(JSONObject item, String query, int year) {
+        int score = 0;
+        String title = item.optString("title", item.optString("name"));
+        String original = item.optString("original_title", item.optString("original_name"));
+        if (query.equals(title) || query.equals(original)) score += 2;
+        if (year > 0) {
+            int itemYear = parseYear(item.optString("release_date", item.optString("first_air_date")));
+            if (itemYear > 0) {
+                int diff = Math.abs(itemYear - year);
+                if (diff == 0) score += 3;
+                else if (diff == 1) score += 2;
+                else if (diff > 3) score -= 3;
+            }
+        }
+        return score;
     }
 
     /** 去掉"第二季""4K""(2024)""【国语】"这类后缀，提高命中率 */

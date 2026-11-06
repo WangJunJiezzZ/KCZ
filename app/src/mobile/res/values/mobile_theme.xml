@@ -1,0 +1,11 @@
+<resources>
+    <color name="mobile_background">#080808</color>
+    <color name="mobile_surface">#181818</color>
+    <color name="mobile_red">#E50914</color>
+    <color name="mobile_muted">#B3B3B3</color>
+    <dimen name="mobile_page_gutter">16dp</dimen>
+    <style name="MobileNavigation">
+        <item name="android:textSize">12sp</item>
+    </style>
+    <style name="MobileNavIndicator"><item name="android:color">#33E50914</item></style>
+</resources>

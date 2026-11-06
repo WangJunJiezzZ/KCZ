@@ -1,6 +1,17 @@
 <resources>
 
-    <style name="Theme.Base" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+    <style name="Theme.Base" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@color/mobile_background</item>
+        <item name="android:colorBackground">@color/mobile_background</item>
+        <item name="colorSurface">@color/mobile_surface</item>
+        <item name="colorSurfaceContainer">@color/mobile_surface</item>
+        <item name="colorPrimary">@color/mobile_red</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/mobile_red</item>
+        <item name="colorOnPrimaryContainer">@color/white</item>
+        <item name="colorSecondary">@color/mobile_red</item>
+        <item name="colorSecondaryContainer">@color/mobile_surface</item>
+        <item name="colorOnSecondaryContainer">@color/white</item>
         <item name="android:statusBarColor">@color/transparent</item>
         <item name="android:navigationBarColor">@color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
@@ -33,4 +44,9 @@
         <item name="titleTextColor">@color/white</item>
     </style>
 
+    <style name="Theme.Bridge" parent="Theme.Base">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>

@@ -114,6 +114,10 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
+import java.util.HashMap;
+import java.util.Map;
+import com.fongmi.android.tv.utils.NetdiskLogin;
+import com.fongmi.android.tv.utils.NetdiskRank;
 
 public class VideoActivity extends PlaybackActivity implements Clock.Callback, CustomKeyDown.Listener, ControlDialog.Listener, ParseDialog.Listener, VodPlaybackHost, FlagAdapter.OnClickListener, EpisodeAdapter.OnClickListener, QualityAdapter.OnClickListener, QuickAdapter.OnClickListener, CastDialog.Listener, InfoDialog.Listener {
 
@@ -277,7 +281,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (TextUtils.isEmpty(intent.getStringExtra("id")) || isSameVideo(intent)) return;
-        mBinding.swipeLayout.setRefreshing(true);
+        mBinding.swipeLayout.setRefreshing(false);
         saveHistory(true);
         mVod.reset();
         setIntent(intent);
@@ -293,7 +297,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (v, insets) -> setStatusBar(insets));
         mKeyDown = CustomKeyDown.create(this, mBinding.player);
         mFrameParams = mBinding.video.getLayoutParams();
-        mBinding.progressLayout.showProgress();
+        mBinding.progressLayout.showContent();
         mBinding.swipeLayout.setEnabled(false);
         mClock = Clock.create();
         mR1 = this::hideControl;
@@ -313,6 +317,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     @SuppressLint("ClickableViewAccessibility")
     protected void initEvent() {
+        mBinding.widget.error.setOnClickListener(v -> onRefresh());
         mBinding.name.setOnClickListener(view -> onName());
         mBinding.more.setOnClickListener(view -> onMore());
         mBinding.actor.setOnClickListener(view -> onActor());
@@ -383,9 +388,21 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setVideoView() {
+        mBinding.getRoot().addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (!isLand() || isFullscreen() || isInPictureInPictureMode() || r - l == or - ol) return;
+            fitTabletPlayer(r - l);
+        });
+        mBinding.video.post(() -> { if (isLand()) fitTabletPlayer(mBinding.getRoot().getWidth()); });
         PlayerEngineDialog.setText(mBinding.control.action.player);
         mBinding.control.action.danmaku.setVisibility(DanmakuSetting.isLoad() ? View.VISIBLE : View.GONE);
         mBinding.video.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> mPiP.update(this, view));
+    }
+
+    private void fitTabletPlayer(int width) {
+        if (width <= 0 || isFullscreen() || isInPictureInPictureMode()) return;
+        mFrameParams.width = Math.min(ResUtil.dp2px(720), Math.max(ResUtil.dp2px(200), (width - ResUtil.dp2px(48)) * 55 / 100));
+        mFrameParams.height = mFrameParams.width * 9 / 16;
+        mBinding.video.setLayoutParams(mFrameParams);
     }
 
     private void setVideoView(boolean isInPictureInPictureMode) {
@@ -523,11 +540,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     public void requestDetail(String key, String id) {
+        cancelNetdiskLogin();
+        String detail = key + "\n" + id;
+        if (!detail.equals(mLoginDetail)) mLoginTries.clear();
+        mLoginDetail = detail;
         mViewModel.detailContent(key, id);
+        showProgress();
     }
 
     @Override
     public void requestPlayer(VodPlayRequest request) {
+        cancelNetdiskLogin();
         mViewModel.playerContent(request);
         showProgress();
     }
@@ -548,7 +571,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         getIntent().putExtra("key", item.getSiteKey());
         getIntent().putExtra("pic", item.getPic());
         getIntent().putExtra("id", item.getId());
-        mBinding.swipeLayout.setRefreshing(true);
+        mBinding.swipeLayout.setRefreshing(false);
         mBinding.swipeLayout.setEnabled(false);
         mBinding.scroll.scrollTo(0, 0);
         mClock.setCallback(null);
@@ -826,12 +849,16 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     public void onItemClick(Flag item) {
+        cancelNetdiskLogin();
+        mLoginTries.clear();
         mVod.selectFlag(item);
     }
 
     @Override
     public void onItemClick(Episode item) {
         if (shouldEnterFullscreen(item)) return;
+        cancelNetdiskLogin();
+        mLoginTries.clear();
         mVod.selectEpisode(item);
     }
 
@@ -1026,6 +1053,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onRefresh() {
+        cancelNetdiskLogin();
+        mLoginTries.clear();
         mVod.refresh();
     }
 
@@ -1086,6 +1115,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onSwipeRefresh() {
+        cancelNetdiskLogin();
+        mLoginTries.clear();
+        mBinding.swipeLayout.setRefreshing(false);
         if (mBinding.progressLayout.isEmpty()) mVod.requestDetail();
         else mVod.refresh();
     }
@@ -1117,6 +1149,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.episode.postDelayed(() -> mBinding.episode.scrollToPosition(mEpisodeAdapter.getPosition()), 100);
         mBinding.control.title.setVisibility(View.INVISIBLE);
         mBinding.video.setLayoutParams(mFrameParams);
+        if (isLand()) fitTabletPlayer(mBinding.getRoot().getWidth());
         mKeyDown.resetScale();
         App.post(mR3, 2000);
         setRotate(false);
@@ -1135,6 +1168,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void showProgress() {
+        mBinding.progressLayout.showContent();
         mBinding.progress.getRoot().setVisibility(View.VISIBLE);
         App.post(mR2, 0);
         hideError();
@@ -1156,6 +1190,92 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void hideError() {
         mBinding.widget.error.setVisibility(View.GONE);
         mBinding.widget.error.setText("");
+    }
+
+    private final Map<String, Integer> mLoginTries = new HashMap<>();
+    private String mLoginDetail = "";
+    private volatile int mLoginGeneration;
+    private boolean mLoginRunning;
+    private volatile boolean mLoginClosed;
+    private Thread mLoginTask;
+
+    @Override
+    public boolean handleNetdiskError(String disk, String msg) {
+        if (mLoginRunning) return true;
+        int tries = mLoginTries.getOrDefault(disk, 0);
+        if (tries >= 1) {
+            showError(msg + "\n" + getString(R.string.mobile_login_cancelled));
+            return true;
+        }
+        mLoginTries.put(disk, tries + 1);
+        mLoginRunning = true;
+        mLoginClosed = false;
+        int token = ++mLoginGeneration;
+        String detail = getHistoryKey();
+        String config = VodConfig.getUrl();
+        showError(getString(R.string.netdisk_login_checking, disk));
+        mLoginTask = new Thread(() -> runNetdiskLogin(disk, msg, token, detail, config), "MobileNetdiskLogin");
+        mLoginTask.start();
+        return true;
+    }
+
+    private boolean isCurrentLogin(int token, String detail, String config) {
+        return token == mLoginGeneration && !isFinishing() && !isDestroyed()
+                && detail.equals(getHistoryKey()) && config.equals(VodConfig.getUrl());
+    }
+
+    private void postLogin(int token, String detail, String config, Runnable action) {
+        App.post(() -> { if (isCurrentLogin(token, detail, config)) action.run(); });
+    }
+
+    private void runNetdiskLogin(String disk, String msg, int token, String detail, String config) {
+        try {
+            NetdiskLogin.Entry entry = NetdiskLogin.find(disk);
+            if (!isCurrentLogin(token, detail, config)) return;
+            if (entry == null) {
+                postLogin(token, detail, config, () -> showError(msg + "\n" + getString(R.string.netdisk_login_missing)));
+                return;
+            }
+            postLogin(token, detail, config, () -> {
+                LoginBridgeActivity.start(this, entry, token);
+                showError(getString(R.string.netdisk_login_waiting, disk));
+            });
+            for (int i = 0; i < 90; i++) {
+                Thread.sleep(2000);
+                if (!isCurrentLogin(token, detail, config)) return;
+                String status = NetdiskLogin.status(entry);
+                if (status != null && !status.equals(entry.remark())) {
+                    postLogin(token, detail, config, () -> {
+                        NetdiskRank.markOk(disk);
+                        mVod.refresh();
+                    });
+                    return;
+                }
+                if (mLoginClosed) {
+                    postLogin(token, detail, config, () -> showError(getString(R.string.mobile_login_cancelled)));
+                    return;
+                }
+            }
+            postLogin(token, detail, config, () -> showError(getString(R.string.mobile_login_timeout)));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            postLogin(token, detail, config, () -> showError(msg + "\n" + getString(R.string.mobile_login_failed)));
+        } finally {
+            App.post(() -> {
+                if (token == mLoginGeneration) {
+                    mLoginRunning = false;
+                    mLoginTask = null;
+                }
+            });
+        }
+    }
+
+    private void cancelNetdiskLogin() {
+        mLoginGeneration++;
+        mLoginRunning = false;
+        if (mLoginTask != null) mLoginTask.interrupt();
+        mLoginTask = null;
     }
 
     private void syncDanmakuEnabled() {
@@ -1592,6 +1712,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == LoginBridgeActivity.REQUEST_CODE && data != null
+                && data.getIntExtra("token", -1) == mLoginGeneration) mLoginClosed = true;
         if (resultCode == RESULT_OK && requestCode == 1001) PlaybackIntent.onExternalResult(data, service()::dispatchNext, controller()::seekTo);
     }
 
@@ -1669,6 +1791,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     protected void onDestroy() {
+        cancelNetdiskLogin();
         mClock.release();
         saveHistory(true);
         Timer.get().reset();

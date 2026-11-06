@@ -1,0 +1,5 @@
+<resources>
+    <string name="mobile_login_timeout">扫码等待已结束，请重试或到配置中心登录</string>
+    <string name="mobile_login_failed">扫码登录入口加载失败，请重试或到配置中心登录</string>
+    <string name="mobile_login_cancelled">扫码窗口已关闭，尚未确认登录成功，请点击重试</string>
+</resources>

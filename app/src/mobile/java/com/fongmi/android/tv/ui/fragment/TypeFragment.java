@@ -21,6 +21,8 @@ import com.fongmi.android.tv.bean.Value;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.FragmentTypeBinding;
 import com.fongmi.android.tv.model.SiteViewModel;
+import com.fongmi.android.tv.model.MobileHomeViewModel;
+import com.fongmi.android.tv.ui.adapter.MobileHomeAdapter;
 import com.fongmi.android.tv.ui.activity.SearchActivity;
 import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.adapter.VodAdapter;
@@ -38,6 +40,8 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     private CustomScroller mScroller;
     private SiteViewModel mViewModel;
     private VodAdapter mAdapter;
+    private MobileHomeAdapter mFeed;
+    private MobileHomeViewModel mHomeModel;
 
     public static TypeFragment newInstance(String key, String typeId, Style style, HashMap<String, String> extend, boolean folder, int y) {
         Bundle args = new Bundle();
@@ -116,6 +120,11 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     }
 
     private void setStyle(Style style) {
+        if (isHome()) {
+            mBinding.recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
+            mBinding.recycler.setAdapter(mFeed = new MobileHomeAdapter(this, type -> getParent().selectType(type)));
+            return;
+        }
         mBinding.recycler.setAdapter(mAdapter = new VodAdapter(this, style, Product.getSpec(requireActivity(), style)));
         mBinding.recycler.setLayoutManager(style.isList() ? new LinearLayoutManager(requireActivity()) : new GridLayoutManager(getContext(), Product.getColumn(requireActivity(), style)));
     }
@@ -124,14 +133,26 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
         mViewModel.getResult().observe(getViewLifecycleOwner(), this::setAdapter);
         mViewModel.getAction().observe(getViewLifecycleOwner(), result -> Notify.show(result.getMsg()));
+        if (isHome()) {
+            mHomeModel = new ViewModelProvider(this).get(MobileHomeViewModel.class);
+            mHomeModel.getRows().observe(getViewLifecycleOwner(), rows -> {
+                mFeed.submit(rows);
+                mBinding.progressLayout.showContent(true, rows.size());
+                mBinding.swipeLayout.setRefreshing(false);
+            });
+        }
     }
 
     private void getHome() {
-        mAdapter.clear(() -> mViewModel.homeContent());
+        mViewModel.homeContent();
     }
 
     private void getVideo() {
         mScroller.reset();
+        if (isHome()) {
+            setAdapter(getParent().getResult());
+            return;
+        }
         mAdapter.clear(() -> {
             if (!mBinding.swipeLayout.isRefreshing()) mBinding.progressLayout.showProgress();
             if (isHome()) setAdapter(getParent().getResult());
@@ -144,6 +165,11 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     }
 
     private void setAdapter(Result result) {
+        if (result == null) return;
+        if (isHome()) {
+            mHomeModel.load(getKey(), result);
+            return;
+        }
         boolean first = mScroller.first();
         int size = result.getList().size();
         mBinding.progressLayout.showContent(first, size);

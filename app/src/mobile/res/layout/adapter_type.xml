@@ -6,8 +6,9 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="8dp"
     android:layout_marginEnd="8dp"
-    android:background="@drawable/shape_item_round"
+    android:background="@drawable/mobile_category"
     android:gravity="center"
-    android:textColor="@color/selector_text"
+    android:minHeight="48dp"
+    android:textColor="@color/white"
     android:textSize="14sp"
     tools:text="電影" />

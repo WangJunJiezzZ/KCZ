@@ -95,6 +95,15 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     @Override
     protected void initEvent() {
+        mBinding.chooseConfig.setOnClickListener(v -> LinkDialog.show(this));
+        mBinding.retry.setOnClickListener(v -> VodConfig.get().load(new Callback() {
+            @Override public void start() { showProgress(); }
+            @Override public void error(String msg) {
+                hideProgress();
+                mBinding.emptyState.setVisibility(View.VISIBLE);
+                Notify.show(msg);
+            }
+        }));
         mBinding.top.setOnClickListener(this::onTop);
         mBinding.logo.setOnClickListener(this::onLogo);
         mBinding.link.setOnClickListener(this::onLink);
@@ -132,6 +141,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     private void setAdapter(Result result) {
         mAdapter.addAll(mResult = result);
+        mBinding.emptyState.setVisibility(mAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
         mBinding.pager.getAdapter().notifyDataSetChanged();
         setFabVisible(0);
         hideProgress();
@@ -192,6 +202,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void showProgress() {
+        mBinding.emptyState.setVisibility(View.GONE);
         mBinding.progress.getRoot().setVisibility(View.VISIBLE);
     }
 
@@ -219,6 +230,15 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
 
     public Result getResult() {
         return mResult == null ? new Result() : mResult;
+    }
+
+    public void selectType(Class type) {
+        for (int i = 0; i < mAdapter.getItemCount(); i++) {
+            if (mAdapter.get(i).getTypeId().equals(type.getTypeId())) {
+                mBinding.pager.setCurrentItem(i);
+                return;
+            }
+        }
     }
 
     private void setLogo() {
@@ -249,6 +269,7 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         switch (event.type()) {
             case EMPTY:
                 hideProgress();
+                if (mAdapter.getItemCount() == 0) mBinding.emptyState.setVisibility(View.VISIBLE);
                 break;
             case PROGRESS:
                 showProgress();
@@ -330,7 +351,8 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         }
 
         @Override
-        public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
+        public int getItemPosition(@NonNull Object object) {
+            return POSITION_NONE;
         }
     }
 }

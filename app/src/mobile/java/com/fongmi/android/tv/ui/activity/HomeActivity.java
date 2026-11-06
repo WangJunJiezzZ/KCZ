@@ -57,7 +57,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     private FragmentStateManager mManager;
     private ActivityHomeBinding mBinding;
-    private int orientation;
+    private int windowWidth;
 
     @Override
     protected ViewBinding getBinding() {
@@ -78,12 +78,13 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     @Override
     protected void initView(Bundle savedInstanceState) {
-        orientation = getResources().getConfiguration().orientation;
+        windowWidth = getResources().getConfiguration().screenWidthDp;
         mBinding.navigation.setOnItemSelectedListener(this);
         PermissionUtil.requestNotify(this);
         initFragment(savedInstanceState);
         Updater.create().start(this);
-        initConfig();
+        if (savedInstanceState == null || VodConfig.get().getHome().getKey().isEmpty()) initConfig();
+        else setNavigation();
     }
 
     @Override
@@ -218,9 +219,9 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
     }
 
     private void checkOrientation(Configuration newConfig) {
-        if (orientation != newConfig.orientation) {
-            orientation = newConfig.orientation;
-            RefreshEvent.home();
+        if (windowWidth != newConfig.screenWidthDp) {
+            windowWidth = newConfig.screenWidthDp;
+            recreate();
         }
     }
 
@@ -242,6 +243,10 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     @Override
     protected void onDestroy() {
+        if (isChangingConfigurations()) {
+            super.onDestroy();
+            return;
+        }
         LiveConfig.get().clear();
         VodConfig.get().clear();
         AppDatabase.backup();

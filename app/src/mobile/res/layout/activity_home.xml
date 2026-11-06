@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:background="@color/mobile_background">
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/container"
@@ -12,14 +13,16 @@
         android:layout_above="@+id/navigation" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/navigation"
+        android:id="@+id/navigation" tools:viewBindingType="com.google.android.material.navigation.NavigationBarView"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="72dp"
         android:layout_alignParentBottom="true"
-        android:background="@color/transparent"
+        android:background="@color/mobile_surface"
         app:elevation="0dp"
         app:itemIconTint="@color/selector_nav"
-        app:labelVisibilityMode="unlabeled"
+        app:itemTextColor="@color/selector_nav"
+        app:itemActiveIndicatorStyle="@style/MobileNavIndicator"
+        app:labelVisibilityMode="labeled"
         app:menu="@menu/menu_nav" />
 
 </RelativeLayout>

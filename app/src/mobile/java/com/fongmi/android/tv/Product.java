@@ -6,6 +6,7 @@ import android.view.DisplayCutout;
 
 import com.fongmi.android.tv.bean.Style;
 import com.fongmi.android.tv.setting.PlayerSetting;
+import com.fongmi.android.tv.ui.activity.HomeActivity;
 import com.fongmi.android.tv.utils.ResUtil;
 
 public class Product {
@@ -15,13 +16,16 @@ public class Product {
     }
 
     public static int getColumn(Context context) {
-        int count = ResUtil.isLand(context) ? 7 : 5;
-        count = count + (ResUtil.isPad() ? 1 : 0);
-        return Math.abs(PlayerSetting.getSize() - count);
+        return getColumn(context, Style.rect());
     }
 
+    /** Use the current window, including split screen, rather than a device label. */
     public static int getColumn(Context context, Style style) {
-        return style.isLand() ? getColumn(context) - 1 : getColumn(context);
+        int width = context.getResources().getConfiguration().screenWidthDp;
+        int available = width - (hasRail(context) ? 88 : 0);
+        int target = style.isLand() ? 200 : width >= 600 ? 140 : 112;
+        int base = Math.max(2, available / target);
+        return Math.clamp(base + 2 - PlayerSetting.getSize(), 2, 10);
     }
 
     public static int[] getSpec(Context context) {
@@ -36,7 +40,9 @@ public class Product {
     }
 
     private static int[] getSpec(Context context, int space, int column, Style style) {
-        int base = ResUtil.getScreenWidth(context) - space;
+        int window = Math.round(context.getResources().getConfiguration().screenWidthDp * context.getResources().getDisplayMetrics().density);
+        int rail = hasRail(context) ? ResUtil.dp2px(88) : 0;
+        int base = Math.max(column, window - rail - space);
         int width = base / column;
         int height = (int) (width / style.getRatio());
         return new int[]{width, height};
@@ -49,5 +55,9 @@ public class Product {
         int left = cutout.getSafeInsetLeft();
         int right = cutout.getSafeInsetRight();
         return left | right;
+    }
+
+    private static boolean hasRail(Context context) {
+        return context instanceof HomeActivity && context.getResources().getConfiguration().screenWidthDp >= 600;
     }
 }

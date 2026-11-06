@@ -84,6 +84,10 @@ public class FolderFragment extends BaseFragment {
         return getParent().getResult();
     }
 
+    public void selectType(Class type) {
+        getParent().selectType(type);
+    }
+
     public void onRefresh() {
         Optional.ofNullable(getChild()).ifPresent(TypeFragment::onRefresh);
     }

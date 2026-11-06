@@ -38,6 +38,8 @@ android {
         }
         mobile {
             dimension "mode"
+            applicationIdSuffix '.mobile'
+            versionNameSuffix '-mobile'
         }
         arm64_v8a {
             dimension "abi"

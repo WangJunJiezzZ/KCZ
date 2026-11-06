@@ -90,7 +90,8 @@
                         android:ellipsize="end"
                         android:maxLines="3"
                         android:textColor="@color/white"
-                        android:textSize="20sp"
+                        android:textSize="26sp"
+                        android:textStyle="bold"
                         tools:text="慶餘年第二季" />
 
                     <com.google.android.material.textview.MaterialTextView

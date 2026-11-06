@@ -128,6 +128,13 @@
             android:parentActivityName=".ui.activity.HomeActivity"
             android:supportsPictureInPicture="true" />
 
+        <activity
+            android:name=".ui.activity.LoginBridgeActivity"
+            android:exported="false"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|uiMode|orientation|keyboard|keyboardHidden|navigation"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Bridge" />
+
         <receiver
             android:name=".receiver.ShortcutReceiver"
             android:exported="false" />

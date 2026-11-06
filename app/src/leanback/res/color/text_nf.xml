@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：奈飞风格文字/图标颜色：焦点（白底）时深色，选中纯白，平时略灰 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="#FF141414" android:state_focused="true" />
+    <item android:color="#FFFFFFFF" android:state_selected="true" />
+    <item android:color="#FFFFFFFF" android:state_activated="true" />
+    <item android:color="#D9FFFFFF" />
+</selector>

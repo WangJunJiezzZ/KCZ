@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：奈飞风格：焦点 = 白底（配合 @color/text_nf 变深色字）；选中 = 更亮的半透明底；平时 = 浅半透明底 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/shape_nf_focused" android:state_focused="true" />
+    <item android:drawable="@drawable/shape_nf_selected" android:state_selected="true" />
+    <item android:drawable="@drawable/shape_nf_selected" android:state_activated="true" />
+    <item android:drawable="@drawable/shape_nf_normal" />
+</selector>

@@ -4,7 +4,7 @@
     android:id="@+id/text"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="@drawable/selector_item"
+    android:background="@drawable/selector_nf"
     android:ellipsize="marquee"
     android:focusable="true"
     android:focusableInTouchMode="true"
@@ -12,6 +12,6 @@
     android:nextFocusUp="@id/flag"
     android:nextFocusDown="@id/array"
     android:singleLine="true"
-    android:textColor="@color/text"
+    android:textColor="@color/text_nf"
     android:textSize="16sp"
     tools:text="20" />

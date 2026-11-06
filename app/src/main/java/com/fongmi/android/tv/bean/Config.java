@@ -94,8 +94,20 @@ public class Config {
     public static Config vod() {
         Config item = AppDatabase.get().getConfigDao().findOne(0);
         if (item != null) return item;
-        String url = BuildConfig.DEFAULT_VOD_URL;
-        return TextUtils.isEmpty(url) ? create(0) : create(0, url);
+        // 二次开发：首次安装时，gradle.properties 的 customVodUrl 可写多个地址（逗号分隔），全部存进「设置 → 点播」的历史，
+        // 第一个作为当前使用的源（findOne 按 time 倒序取，所以第一个时间最新，后面依次早 1 毫秒）
+        Config first = null;
+        long now = System.currentTimeMillis();
+        String[] urls = BuildConfig.DEFAULT_VOD_URL.split(",");
+        for (int i = 0; i < urls.length; i++) {
+            String url = urls[i].trim();
+            if (url.isEmpty()) continue;
+            Config config = new Config().type(0).url(url);
+            config.setTime(now - i);
+            config.insert();
+            if (first == null) first = config;
+        }
+        return first == null ? create(0) : first;
     }
 
     public static Config live() {

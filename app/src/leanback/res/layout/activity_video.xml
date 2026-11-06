@@ -7,12 +7,11 @@
     android:layout_height="match_parent"
     android:background="@color/home_bg">
 
-    <!-- 二次开发：奈飞风格详情页背景 = 当前影片剧照清晰铺在右侧 + 左侧/底部渐隐 -->
+    <!-- 二次开发：奈飞风格详情页背景 = 当前影片剧照全屏 16:9（TMDB 原图，不裁切放大）+ 整体压暗与左侧/底部渐隐 -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/detailBackdrop"
-        android:layout_width="740dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentEnd="true"
         android:scaleType="centerCrop" />
 
     <View
@@ -74,7 +73,11 @@
         android:layout_toEndOf="@+id/video"
         android:singleLine="true"
         android:textColor="@color/white"
-        android:textSize="24sp"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:shadowColor="#CC000000"
+        android:shadowDy="2"
+        android:shadowRadius="8"
         tools:text="慶餘年第二季" />
 
     <com.google.android.material.textview.MaterialTextView
@@ -86,7 +89,7 @@
         android:layout_marginTop="6dp"
         android:layout_marginEnd="24dp"
         android:singleLine="true"
-        android:textColor="@color/white"
+        android:textColor="#B3FFFFFF"
         android:textSize="16sp"
         tools:text="更新到第二季" />
 
@@ -164,7 +167,7 @@
         android:layout_marginTop="6dp"
         android:layout_marginEnd="24dp"
         android:ellipsize="end"
-        android:maxLines="2"
+        android:maxLines="1"
         android:nextFocusDown="@id/content"
         android:textColor="@color/white"
         android:textSize="16sp"
@@ -183,7 +186,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
-            android:background="@drawable/selector_item"
+            android:background="@drawable/selector_nf"
             android:drawablePadding="6dp"
             android:focusable="true"
             android:focusableInTouchMode="true"
@@ -192,16 +195,17 @@
             android:nextFocusDown="@id/flag"
             android:singleLine="true"
             android:text="@string/detail_desc"
-            android:textColor="@color/white"
+            android:textColor="@color/text_nf"
             android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_detail_desc" />
+            app:drawableStartCompat="@drawable/ic_detail_desc"
+            app:drawableTint="@color/text_nf" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/keep"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
-            android:background="@drawable/selector_item"
+            android:background="@drawable/selector_nf"
             android:drawablePadding="6dp"
             android:focusable="true"
             android:focusableInTouchMode="true"
@@ -210,15 +214,16 @@
             android:nextFocusDown="@id/flag"
             android:singleLine="true"
             android:text="@string/keep"
-            android:textColor="@color/white"
+            android:textColor="@color/text_nf"
             android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_detail_keep_off" />
+            app:drawableStartCompat="@drawable/ic_detail_keep_off"
+            app:drawableTint="@color/text_nf" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/change"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/selector_item"
+            android:background="@drawable/selector_nf"
             android:drawablePadding="6dp"
             android:focusable="true"
             android:focusableInTouchMode="true"
@@ -228,9 +233,10 @@
             android:nextFocusDown="@id/flag"
             android:singleLine="true"
             android:text="@string/play_change"
-            android:textColor="@color/white"
+            android:textColor="@color/text_nf"
             android:textSize="16sp"
-            app:drawableStartCompat="@drawable/ic_detail_change" />
+            app:drawableStartCompat="@drawable/ic_detail_change"
+            app:drawableTint="@color/text_nf" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 

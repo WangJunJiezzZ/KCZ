@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：奈飞风格角标：深色半透明 -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:alpha="0.7" android:color="#177535" />
+    <item android:alpha="0.6" android:color="#000000" />
 </selector>

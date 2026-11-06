@@ -31,6 +31,8 @@ import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.transition.Transition;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
@@ -619,18 +621,31 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         showDetailBackdrop(getName(), null, getPic(), "");
     }
 
-    /** 大图优先级：源提供的横版剧照 hd → TMDB 高清剧照 → 海报 poster */
+    /** 大图优先级：源提供的横版剧照 hd → TMDB 高清剧照 → 海报 poster（模糊压暗当底色，不放大铺满） */
     private void showDetailBackdrop(String name, String hd, String poster, String year) {
         if (hd != null && !hd.isEmpty()) {
-            ImgUtil.load(name, hd, mBinding.detailBackdrop);
+            showSharpBackdrop(hd);
         } else if (!Backdrop.enabled()) {
-            if (poster != null && !poster.isEmpty()) ImgUtil.load(name, poster, mBinding.detailBackdrop);
+            showPosterBackdrop(poster);
         } else {
             Backdrop.find(name, year, url -> {
-                String pic = url.isEmpty() ? poster : url;
-                if (pic != null && !pic.isEmpty() && !isFinishing()) ImgUtil.load(name, pic, mBinding.detailBackdrop);
+                if (isFinishing() || isDestroyed()) return;
+                if (url.isEmpty()) showPosterBackdrop(poster);
+                else showSharpBackdrop(url);
             });
         }
+    }
+
+    // 二次开发：剧照全屏后，竖版小海报放大铺满会很糊：缩到很小再放大（系统缩放即柔和模糊）并压暗，只当氛围底色
+    private void showSharpBackdrop(String url) {
+        mBinding.detailBackdrop.setAlpha(1f);
+        Glide.with(mBinding.detailBackdrop).load(ImgUtil.getUrl(url)).centerCrop().transition(DrawableTransitionOptions.withCrossFade(500)).into(mBinding.detailBackdrop);
+    }
+
+    private void showPosterBackdrop(String poster) {
+        if (poster == null || poster.isEmpty()) return;
+        mBinding.detailBackdrop.setAlpha(0.6f);
+        Glide.with(mBinding.detailBackdrop).load(ImgUtil.getUrl(poster)).override(24, 36).centerCrop().transition(DrawableTransitionOptions.withCrossFade(500)).into(mBinding.detailBackdrop);
     }
 
     @Override

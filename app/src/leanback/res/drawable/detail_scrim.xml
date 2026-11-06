@@ -1,22 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 详情页遮罩：左侧纯黑渐隐到右侧（剧照露出），底部再加一层渐隐，保证选集文字清楚 -->
+<!-- 二次开发：详情页遮罩（剧照已全屏）：左侧较暗（播放小窗、选集区）渐到右侧轻压暗（剧照露出），
+     底部再加一层渐隐，保证线路/选集按钮清楚；标题自带阴影，压在剧照上也能看清 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape>
             <gradient
                 android:angle="0"
-                android:centerColor="#CC0B0B0B"
-                android:centerX="0.45"
+                android:centerColor="#990B0B0B"
+                android:centerX="0.5"
                 android:endColor="#330B0B0B"
-                android:startColor="#FF0B0B0B" />
+                android:startColor="#E60B0B0B" />
         </shape>
     </item>
     <item>
         <shape>
             <gradient
                 android:angle="90"
-                android:centerColor="#800B0B0B"
-                android:centerY="0.3"
+                android:centerColor="#990B0B0B"
+                android:centerY="0.4"
                 android:endColor="#000B0B0B"
                 android:startColor="#F20B0B0B" />
         </shape>

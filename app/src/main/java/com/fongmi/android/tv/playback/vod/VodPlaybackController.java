@@ -438,6 +438,7 @@ public class VodPlaybackController {
         // 二次开发：先按网盘规则排线路（能用的网盘原画在前），要在生成观看记录之前，新片的默认线路才是排第一的
         NetdiskRank.sort(item.getFlags());
         History history = applyDetail(item);
+        preferUsableNetdisk(history);
         if (!state.hasFlags()) fallbackPolicy.emptyFlag();
         else if (!startLineProbe(activeRequest, history, fresh)) restoreDetail(activeRequest, history);
     }
@@ -461,6 +462,17 @@ public class VodPlaybackController {
         previewFlag(history.getFlag());
         host.showLineProbing(targets.size());
         return true;
+    }
+
+    /**
+     * 二次开发：上次看的线路是没登录过的网盘（如百度），而现在有能用的网盘线路（如已登录的夸克）时，改用能用的那条，
+     * 否则「继续观看」一打开就去弹百度扫码。线路已按 NetdiskRank 排过序，第一条就是最好的
+     */
+    private void preferUsableNetdisk(History history) {
+        if (history == null || !state.hasFlags()) return;
+        Flag top = state.getFlags().get(0);
+        Flag last = resolveFlag(history.getFlag());
+        if (NetdiskRank.rank(last) == 2 && NetdiskRank.rank(top) == 0) history.setVodFlag(top.getFlag());
     }
 
     /** 测速期间先把历史线路的选集列出来（不播放），用户可以直接点 */

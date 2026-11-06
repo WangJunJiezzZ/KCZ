@@ -10,12 +10,28 @@ public class HomeMore {
     private final Result result;
     private final String typeId;
     private final String typeName;
+    /** 卡片上显示的文字；行尾卡片是「查看全部 分类名 ›」，首页底部「浏览全部」行是「分类名 ›」 */
+    private final String label;
 
     public HomeMore(String siteKey, Result result, String typeId, String typeName) {
+        this(siteKey, result, typeId, typeName, "查看全部\n" + typeName + " ›");
+    }
+
+    public HomeMore(String siteKey, Result result, String typeId, String typeName, String label) {
         this.siteKey = siteKey;
         this.result = result;
         this.typeId = typeId;
         this.typeName = typeName;
+        this.label = label;
+    }
+
+    /** 首页底部「浏览全部」行的卡片 */
+    public HomeMore asBrowse() {
+        return new HomeMore(siteKey, result, typeId, typeName, typeName + " ›");
+    }
+
+    public String getLabel() {
+        return label;
     }
 
     public String getSiteKey() {

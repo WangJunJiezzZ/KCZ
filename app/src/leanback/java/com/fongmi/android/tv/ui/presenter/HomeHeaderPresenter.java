@@ -21,6 +21,8 @@ public class HomeHeaderPresenter extends Presenter {
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setTextColor(0xFFE5E5E5);
+        // 二次开发：背景剧照铺满全屏后行标题会压在图片上，加阴影保证看得清
+        view.setShadowLayer(ResUtil.dp2px(4), 0, ResUtil.dp2px(1), 0xCC000000);
         view.setPadding(0, ResUtil.dp2px(4), 0, 0);
         view.setFocusable(false);
         return new Presenter.ViewHolder(view);

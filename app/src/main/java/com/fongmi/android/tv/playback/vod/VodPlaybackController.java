@@ -13,6 +13,7 @@ import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.playback.PlaybackResult;
 import com.fongmi.android.tv.utils.NetdiskLogin;
+import com.fongmi.android.tv.utils.NetdiskRank;
 
 import java.util.Collections;
 import java.util.List;
@@ -111,11 +112,18 @@ public class VodPlaybackController {
         Episode episode = findEpisode(request);
         if (episode == null) return;
         applyPlaybackState(result, request);
+        markNetdiskOk(result);
         renderPlaybackResult(result);
         updatePlaybackPosition(result);
         host.loadDanmaku(result, state.getHistory(), episode);
         startPlayback(result, startPositionMs(), episode);
         updatePreload(result);
+    }
+
+    /** 二次开发：网盘线路拿到了真实播放地址 → 记住这个网盘能用，下次排前面 */
+    private void markNetdiskOk(Result result) {
+        if (!state.hasFlags() || result.hasMsg() || result.getRealUrl().isEmpty()) return;
+        NetdiskRank.markOk(NetdiskLogin.diskOfFlag(state.getFlag().getFlag()));
     }
 
     private void applyPlaybackState(Result result, VodPlayRequest request) {
@@ -254,6 +262,7 @@ public class VodPlaybackController {
         host.resetPlaybackForError(msg);
         // 二次开发：网盘线路失败不自动换线，交给界面弹对应网盘的扫码登录（没登录就不该切走）
         String disk = NetdiskLogin.detect(msg);
+        if (disk != null) NetdiskRank.markBad(disk); // 明确报没登录 / Cookie 失效：这个网盘暂时不能用
         if (disk == null && state.hasFlags()) disk = NetdiskLogin.diskOfFlag(state.getFlag().getFlag());
         if (disk != null && host.handleNetdiskError(disk, msg)) return;
         fallbackPolicy.playbackError();
@@ -426,6 +435,8 @@ public class VodPlaybackController {
     private void detailLoaded(Vod item) {
         VodPlayRequest activeRequest = state.getActiveRequest();
         boolean fresh = History.find(host.getHistoryKey()) == null;
+        // 二次开发：先按网盘规则排线路（能用的网盘原画在前），要在生成观看记录之前，新片的默认线路才是排第一的
+        NetdiskRank.sort(item.getFlags());
         History history = applyDetail(item);
         if (!state.hasFlags()) fallbackPolicy.emptyFlag();
         else if (!startLineProbe(activeRequest, history, fresh)) restoreDetail(activeRequest, history);

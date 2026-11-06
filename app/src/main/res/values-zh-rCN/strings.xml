@@ -61,6 +61,8 @@
     <string name="play_switch_flag">正在切换线路至「<xliff:g name="name">%s</xliff:g>」</string>
     <string name="play_switch_site">正在切换站源至「<xliff:g name="name">%s</xliff:g>」</string>
     <string name="line_probing">正在测速选线（<xliff:g name="count">%d</xliff:g> 条）</string>
+    <string name="home_browse">浏览全部</string>
+    <string name="home_browse_all">全部分类</string>
     <string name="netdisk_login_opening">没有登录<xliff:g name="disk">%s</xliff:g>网盘，正在打开扫码登录…</string>
     <string name="netdisk_login_checking">播放失败，正在检查<xliff:g name="disk">%s</xliff:g>网盘登录状态…</string>
     <string name="netdisk_login_waiting">请用<xliff:g name="disk">%s</xliff:g> App 扫码，登录成功后会自动重新播放</string>

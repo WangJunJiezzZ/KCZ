@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.playback.vod;
 
 import com.fongmi.android.tv.bean.Flag;
+import com.fongmi.android.tv.utils.NetdiskRank;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,9 +30,12 @@ public final class LineRank {
     /** 原地重排 flags，返回是否有变化 */
     public static boolean sort(List<Flag> flags, Map<String, LineProbe.Result> results) {
         List<Flag> before = new ArrayList<>(flags);
+        // 先按网盘规则分大组（能用的网盘 → 普通线路 → 没登录的网盘，见 NetdiskRank），普通线路再按测速结果排
         Comparator<Flag> comparator = Comparator
-                .comparingInt((Flag flag) -> group(results.get(flag.getFlag())))
-                .thenComparing((a, b) -> compareInGroup(results.get(a.getFlag()), results.get(b.getFlag())));
+                .comparingInt(NetdiskRank::rank)
+                .thenComparingInt((Flag flag) -> group(results.get(flag.getFlag())))
+                .thenComparing((a, b) -> compareInGroup(results.get(a.getFlag()), results.get(b.getFlag())))
+                .thenComparing(Comparator.comparingInt(NetdiskRank::quality).reversed());
         flags.sort(comparator); // List.sort 是稳定排序，同组同分保持源给的顺序
         return !before.equals(flags);
     }
@@ -41,6 +45,8 @@ public final class LineRank {
         if (result == null) return "";
         if (!result.ok()) return "失败";
         String quality = quality(result.height());
+        // m3u8 没写分辨率时显示按码率估算的档位（加 ≈），否则按钮上空着像是没测，排序位置会让人看不懂
+        if (quality.isEmpty() && result.bitrateKbps() > 0) quality = "≈" + quality(estimatedHeight(result));
         if (group(result) == SLOW) return quality.isEmpty() ? "卡" : quality + " · 卡";
         return quality;
     }

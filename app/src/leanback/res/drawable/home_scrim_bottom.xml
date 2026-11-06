@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 大图底部渐隐：底部纯黑，向上过渡到透明 -->
+<!-- 二次开发：大图底部压暗：底部约 75% 黑（不是纯黑，背景画面能透出来），向上过渡到透明 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
         android:angle="90"
-        android:centerColor="#B30B0B0B"
-        android:centerY="0.45"
+        android:centerColor="#990B0B0B"
+        android:centerY="0.55"
         android:endColor="#000B0B0B"
-        android:startColor="#FF0B0B0B" />
+        android:startColor="#C00B0B0B" />
 </shape>

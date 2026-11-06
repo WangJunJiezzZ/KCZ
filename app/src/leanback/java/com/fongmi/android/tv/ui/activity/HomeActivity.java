@@ -3,8 +3,12 @@ package com.fongmi.android.tv.ui.activity;
 import android.annotation.SuppressLint;
 import android.app.SearchManager;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.RenderEffect;
 import android.graphics.Shader;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -115,6 +119,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private SiteViewModel mViewModel;
     private Runnable mBillboardTask;
     private String mBillboardName;
+    /** 二次开发：背景剧照请求编号（换片 +1，作废过期回调）；当前片的高清剧照是否已到 */
+    private int mBackdropToken;
+    private boolean mBackdropHd;
     private volatile int mRowsToken;
     private boolean mRailExpanded;
     private Result mResult;
@@ -235,11 +242,25 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
                 info.animate().alpha(1f).translationX(0f).setDuration(260).start();
             }).start();
             // 背景剧照：新旧两张交叉淡化，而不是直接替换
+            int token = ++mBackdropToken; // 换片就作废上一部还没回来的剧照查询，旧图晚到不会盖住新图
             if (!TextUtils.isEmpty(hd)) loadBackdrop(hd);
             else if (!Backdrop.enabled()) loadBackdrop(poster);
-            else Backdrop.find(name, url -> {
-                if (name.equals(mBillboardName)) loadBackdrop(url.isEmpty() ? poster : url);
-            });
+            else {
+                // TMDB 查得慢或查不到时，0.6 秒后先换成这部片的海报，不让背景停在上一部的剧照上
+                mBackdropHd = false;
+                App.post(() -> {
+                    if (token == mBackdropToken && !mBackdropHd) loadBackdrop(poster);
+                }, 600);
+                Backdrop.find(name, url -> {
+                    if (token != mBackdropToken) return;
+                    if (url.isEmpty()) {
+                        loadBackdrop(poster);
+                    } else {
+                        mBackdropHd = true;
+                        loadBackdrop(url);
+                    }
+                });
+            }
         };
         App.post(mBillboardTask, 120);
     }
@@ -248,10 +269,31 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         if (TextUtils.isEmpty(pic)) return;
         Glide.with(mBinding.backdrop)
                 .load(ImgUtil.getUrl(pic))
-                .placeholder(mBinding.backdrop.getDrawable())
+                .placeholder(snapshotBackdrop())
                 .transition(DrawableTransitionOptions.with(new DrawableCrossFadeFactory.Builder(450).setCrossFadeEnabled(true).build()))
                 .centerCrop()
                 .into(mBinding.backdrop);
+    }
+
+    /**
+     * 二次开发：把当前背景画面拷贝成一张独立的图，作为新图加载期间的占位（交叉淡化的起点）。
+     * 不能直接用 getDrawable()：Glide 开始新请求时会释放旧图，旧 Bitmap 可能被回收/复用，
+     * 占位还引用它就会崩（Canvas: trying to use a recycled bitmap）。
+     */
+    private Drawable snapshotBackdrop() {
+        Drawable current = mBinding.backdrop.getDrawable();
+        int width = mBinding.backdrop.getWidth();
+        int height = mBinding.backdrop.getHeight();
+        if (current == null || width <= 0 || height <= 0) return null;
+        try {
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            canvas.concat(mBinding.backdrop.getImageMatrix());
+            current.draw(canvas);
+            return new BitmapDrawable(getResources(), bitmap);
+        } catch (Throwable e) {
+            return null;
+        }
     }
 
     private static boolean isFirstInRow(View focused) {
@@ -415,21 +457,40 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         List<Site> sites = new ArrayList<>(VodConfig.get().getSites());
         Set<String> seen = new HashSet<>();
         for (Vod vod : home.getList()) seen.add(vod.getName());
+        mBrowseItems.clear();
         ROWS_EXECUTOR.submit(() -> {
             int count = 0;
             for (HomeRowPlanner.Genre genre : HomeRowPlanner.Genre.values()) {
-                if (token != mRowsToken || count >= MAX_CATEGORY_ROWS) return;
+                if (token != mRowsToken) return;
+                if (count >= MAX_CATEGORY_ROWS) break;
                 com.fongmi.android.tv.bean.Class type = HomeRowPlanner.pick(types, genre);
                 boolean added = type != null && loadRow(token, site, home, type, genre.title, seen);
                 if (!added) added = loadGenreFromOtherSite(token, sites, site, genre, seen);
                 if (added) count++;
             }
             for (com.fongmi.android.tv.bean.Class type : types) {
-                if (token != mRowsToken || count >= MAX_CATEGORY_ROWS) return;
+                if (token != mRowsToken) return;
+                if (count >= MAX_CATEGORY_ROWS) break;
                 if (HomeRowPlanner.genreOf(type.getTypeName()) != null) continue;
                 if (loadRow(token, site, home, type, type.getTypeName(), seen)) count++;
             }
+            // 主线程按投递顺序执行，这一步一定排在所有分类行之后
+            App.post(() -> addBrowseRow(token, site, home));
         });
+    }
+
+    // ===== 二次开发：首页最底部「浏览全部」行：各分类行的入口 + 全部分类，翻到底不再是一片空白 =====
+    private final List<HomeMore> mBrowseItems = new ArrayList<>();
+
+    private void addBrowseRow(int token, Site site, Result home) {
+        if (token != mRowsToken) return;
+        List<HomeMore> items = new ArrayList<>(mBrowseItems);
+        if (!home.getTypes().isEmpty()) items.add(new HomeMore(site.getKey(), home, null, getString(R.string.home_browse_all)));
+        if (items.isEmpty()) return;
+        ArrayObjectAdapter adapter = new ArrayObjectAdapter(new HomePosterPresenter(this));
+        for (HomeMore item : items) adapter.add(item.asBrowse());
+        mAdapter.add(new HomeRowTitle(getString(R.string.home_browse)));
+        mAdapter.add(new ListRow(adapter));
     }
 
     /**
@@ -494,6 +555,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         adapter.add(more);
         mAdapter.add(new HomeRowTitle(title));
         mAdapter.add(new ListRow(adapter));
+        mBrowseItems.add(more);
     }
 
     @Override
@@ -708,8 +770,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         if (KeyUtil.isMenuKey(event)) showDialog();
         // 二次开发：在一行的第一张海报上按 ←，焦点进入左侧导航
         if (KeyUtil.isActionDown(event) && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT && mBinding.recycler.hasFocus() && isFirstInRow(getCurrentFocus())) return mBinding.rail.requestFocus();
+        // 二次开发：在侧边栏按 → 固定回到内容区（按位置找焦点会跳到同一高度的右上角首页源）
+        if (KeyUtil.isActionDown(event) && event.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT && mBinding.rail.hasFocus() && getFirstRowIndex() >= 0) return mBinding.recycler.requestFocus();
         if (KeyUtil.isActionDown(event) & KeyUtil.isDownKey(event) && getCurrentFocus() == mBinding.title) return mBinding.recycler.getChildAt(0).requestFocus();
-        // 二次开发：在内容区最上面一行按 ↑，焦点到右上角首页源（←/→ 直接切换源，确认键弹出源列表）
+        // 二次开发：在内容区最上面一行按 ↑，焦点到右上角首页源（确认键弹出源列表再选，不能左右直接切）
         // 用行号判断是否在第一行：上一行滚出屏幕后系统找不到它，不能靠「往上找不到焦点」来判断
         if (KeyUtil.isActionDown(event) && KeyUtil.isUpKey(event) && mBinding.recycler.hasFocus() && mBinding.title.isFocusable()
                 && mBinding.recycler.getSelectedPosition() <= getFirstRowIndex()) return mBinding.title.requestFocus();

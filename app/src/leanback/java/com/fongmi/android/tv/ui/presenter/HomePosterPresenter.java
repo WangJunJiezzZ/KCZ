@@ -65,7 +65,7 @@ public class HomePosterPresenter extends Presenter {
         holder.binding.badge.setVisibility(View.GONE);
         holder.binding.progress.setVisibility(View.GONE);
         holder.binding.more.setVisibility(View.VISIBLE);
-        holder.binding.more.setText("查看全部\n" + more.getTypeName() + " ›");
+        holder.binding.more.setText(more.getLabel());
         holder.view.setOnClickListener(view -> listener.onMore(more));
         holder.view.setOnLongClickListener(null);
         holder.view.setOnFocusChangeListener(null);

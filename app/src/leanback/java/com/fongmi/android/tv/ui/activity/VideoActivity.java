@@ -9,7 +9,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
 import android.view.KeyEvent;
@@ -91,6 +90,7 @@ import com.fongmi.android.tv.utils.Backdrop;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.KeyUtil;
 import com.fongmi.android.tv.utils.NetdiskLogin;
+import com.fongmi.android.tv.utils.NetdiskRank;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PartUtil;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -328,14 +328,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
         mBinding.control.action.ending.setOnLongClickListener(view -> onEndingReset());
         mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
-        mBinding.flag.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
-            @Override
-            public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
-                // 二次开发：程序刚改过选中线路时，刷新列表会把焦点还原到旧按钮并触发这里，不能当成用户选择（会把坏线路选回来来回打转）
-                if (SystemClock.uptimeMillis() < mFlagSelectMuteUntil) return;
-                if (mFlagAdapter.getItemCount() > 0) onItemClick(mFlagAdapter.get(position));
-            }
-        });
+        // 二次开发：去掉原版「焦点移到哪条线路就切到哪条」，改为按确认键才切（FlagAdapter 的点击）。
+        // 原版翻线路时一路请求一路切换，且刷新列表时焦点还原会把坏线路选回来造成来回打转
         mBinding.episode.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
@@ -651,16 +645,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
 
     @Override
     public void renderFlags(List<Flag> items) {
-        muteFlagSelect();
         mBinding.flag.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mFlagAdapter.addAll(items);
-    }
-
-    /** 二次开发：程序改动线路列表/选中项后 0.8 秒内忽略焦点引起的切线 */
-    private long mFlagSelectMuteUntil;
-
-    private void muteFlagSelect() {
-        mFlagSelectMuteUntil = SystemClock.uptimeMillis() + 800;
     }
 
     @Override
@@ -670,7 +656,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
 
     @Override
     public void renderFlagSelection(Flag item) {
-        muteFlagSelect();
         mBinding.flag.setSelectedPosition(mFlagAdapter.indexOf(item));
         notifyItemChanged(mBinding.flag, mFlagAdapter);
     }
@@ -1174,6 +1159,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
                 Thread.sleep(2000);
                 String now = NetdiskLogin.status(entry);
                 if (now != null && !now.equals(entry.remark())) {
+                    NetdiskRank.markOk(disk); // 扫码登录成功：以后这个网盘的线路排前面
                     App.post(() -> {
                         if (!isFinishing() && !isDestroyed()) mVod.refresh();
                     });

@@ -33,14 +33,14 @@
                 android:background="@drawable/home_scrim_edge" />
         </FrameLayout>
 
-        <!-- 清晰海报 -->
+        <!-- 二次开发：查不到横版剧照时，右侧显示清晰的竖版海报卡片（背景则是同一张海报模糊压暗），不把小海报放大铺满 -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/keyart"
             android:layout_width="120dp"
             android:layout_height="180dp"
             android:layout_gravity="end|top"
-            android:layout_marginTop="58dp"
-            android:layout_marginEnd="64dp"
+            android:layout_marginTop="50dp"
+            android:layout_marginEnd="140dp"
             android:elevation="12dp"
             android:scaleType="centerCrop"
             android:visibility="invisible"

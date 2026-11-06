@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.transition.DrawableCrossFadeFactory;
 import com.fongmi.android.tv.App;
@@ -119,9 +120,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private SiteViewModel mViewModel;
     private Runnable mBillboardTask;
     private String mBillboardName;
-    /** 二次开发：背景剧照请求编号（换片 +1，作废过期回调）；当前片的高清剧照是否已到 */
+    /** 二次开发：背景剧照请求编号（换片 +1，作废过期回调） */
     private int mBackdropToken;
-    private boolean mBackdropHd;
     private volatile int mRowsToken;
     private boolean mRailExpanded;
     private Result mResult;
@@ -243,36 +243,76 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             }).start();
             // 背景剧照：新旧两张交叉淡化，而不是直接替换
             int token = ++mBackdropToken; // 换片就作废上一部还没回来的剧照查询，旧图晚到不会盖住新图
-            if (!TextUtils.isEmpty(hd)) loadBackdrop(hd);
-            else if (!Backdrop.enabled()) loadBackdrop(poster);
+            if (!TextUtils.isEmpty(hd)) showBackdrop(hd);
+            else if (!Backdrop.enabled()) showPosterFallback(poster);
             else {
-                // TMDB 查得慢或查不到时，0.6 秒后先换成这部片的海报，不让背景停在上一部的剧照上
-                mBackdropHd = false;
-                App.post(() -> {
-                    if (token == mBackdropToken && !mBackdropHd) loadBackdrop(poster);
-                }, 600);
+                // 等 TMDB 结果时只把当前背景压暗（不先换成放大的糊海报，也不让上一部的剧照亮着）；
+                // 缓存命中时回调是同步的，压暗动画会被立即取消，不会闪
+                hideKeyart();
+                mBinding.backdrop.animate().cancel();
+                mBinding.backdrop.animate().alpha(DIM_ALPHA).setDuration(200).start();
                 Backdrop.find(name, url -> {
                     if (token != mBackdropToken) return;
-                    if (url.isEmpty()) {
-                        loadBackdrop(poster);
-                    } else {
-                        mBackdropHd = true;
-                        loadBackdrop(url);
-                    }
+                    if (url.isEmpty()) showPosterFallback(poster);
+                    else showBackdrop(url);
                 });
             }
         };
         App.post(mBillboardTask, 120);
     }
 
-    private void loadBackdrop(String pic) {
+    // ===== 二次开发：背景三种状态 =====
+    /** 等待剧照时背景的透明度 */
+    private static final float DIM_ALPHA = 0.3f;
+    /** 海报垫底时背景的透明度（模糊海报再压暗，保证文字和海报卡片突出） */
+    private static final float POSTER_BG_ALPHA = 0.55f;
+    /** 把海报缩到这么小再放大铺满，系统缩放的平滑效果就是柔和的模糊（API 24 也能用，不依赖 RenderEffect） */
+    private static final int BLUR_WIDTH = 24;
+    private static final int BLUR_HEIGHT = 36;
+
+    /** 有横版高清剧照：清晰铺满，不显示海报卡片 */
+    private void showBackdrop(String url) {
+        hideKeyart();
+        setBackdropAlpha(1f);
+        loadBackdrop(url, false);
+    }
+
+    /** 只有竖版海报：右侧显示清晰海报卡片，背景用同一张海报模糊 + 压暗，不把小海报放大铺满（会糊） */
+    private void showPosterFallback(String poster) {
+        if (TextUtils.isEmpty(poster)) {
+            hideKeyart();
+            setBackdropAlpha(DIM_ALPHA);
+            return;
+        }
+        setBackdropAlpha(POSTER_BG_ALPHA);
+        loadBackdrop(poster, true);
+        Glide.with(mBinding.keyart).load(ImgUtil.getUrl(poster)).centerCrop().into(mBinding.keyart);
+        mBinding.keyart.animate().cancel();
+        if (mBinding.keyart.getVisibility() != View.VISIBLE) {
+            mBinding.keyart.setAlpha(0f);
+            mBinding.keyart.setVisibility(View.VISIBLE);
+        }
+        mBinding.keyart.animate().alpha(1f).setDuration(260).start();
+    }
+
+    private void hideKeyart() {
+        mBinding.keyart.animate().cancel();
+        mBinding.keyart.setVisibility(View.GONE);
+    }
+
+    private void setBackdropAlpha(float alpha) {
+        mBinding.backdrop.animate().cancel();
+        mBinding.backdrop.animate().alpha(alpha).setDuration(260).start();
+    }
+
+    private void loadBackdrop(String pic, boolean blur) {
         if (TextUtils.isEmpty(pic)) return;
-        Glide.with(mBinding.backdrop)
+        RequestBuilder<Drawable> builder = Glide.with(mBinding.backdrop)
                 .load(ImgUtil.getUrl(pic))
                 .placeholder(snapshotBackdrop())
-                .transition(DrawableTransitionOptions.with(new DrawableCrossFadeFactory.Builder(450).setCrossFadeEnabled(true).build()))
-                .centerCrop()
-                .into(mBinding.backdrop);
+                .transition(DrawableTransitionOptions.with(new DrawableCrossFadeFactory.Builder(450).setCrossFadeEnabled(true).build()));
+        if (blur) builder = builder.override(BLUR_WIDTH, BLUR_HEIGHT);
+        builder.centerCrop().into(mBinding.backdrop);
     }
 
     /**

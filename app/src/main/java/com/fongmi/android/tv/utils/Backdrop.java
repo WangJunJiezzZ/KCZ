@@ -11,6 +11,9 @@ import com.github.catvod.net.OkHttp;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -49,11 +52,41 @@ public final class Backdrop {
             return;
         }
         EXECUTOR.submit(() -> {
-            String url = search(key);
+            String url = "";
+            String used = key;
+            // 二次开发：一种写法查不到就换下一种（去掉 -副标题、冒号后半段、3D、年份等），提高命中率
+            for (String query : queries(key)) {
+                used = query;
+                url = search(query);
+                if (!url.isEmpty()) break;
+            }
             CACHE.put(key, url);
-            Log.d(TAG, key + " -> " + (url.isEmpty() ? "(无剧照，用海报)" : url));
-            App.post(() -> callback.accept(url));
+            Log.d(TAG, key + (used.equals(key) ? "" : " (用「" + used + "」)") + " -> " + (url.isEmpty() ? "(无剧照，用海报)" : url));
+            String result = url;
+            App.post(() -> callback.accept(result));
         });
+    }
+
+    /**
+     * 依次尝试的查询写法，最多 3 种：
+     * 原样（已 clean）→ 去掉「-副标题」「：副标题」「3D」「末尾年份」→ 只取第一个空格前的主名。
+     * 例：「死神千年血战篇-祸进谭-动漫」→「死神千年血战篇」；「打歌2026」→「打歌」；「逆天邪神3D」→「逆天邪神」
+     */
+    static List<String> queries(String key) {
+        LinkedHashSet<String> items = new LinkedHashSet<>();
+        items.add(key);
+        String shorter = key.replaceAll("\\s*[-—–].*$", "")
+                .replaceAll("\\s*[:：].*$", "")
+                .replaceAll("(?i)3D", "")
+                // 末尾的版本/语言后缀（中文之间没有单词边界，clean 里的 \b 去不掉，在这里按结尾去）
+                .replaceAll("(国语|粤语|国粤|中字|普通话|动漫版|动画版|真人版|未删减|加更版|特别版|完整版|精编版|TV版)+$", "")
+                .replaceAll("(19|20)\\d{2}$", "")
+                .replaceAll("\\s+", " ").trim();
+        if (shorter.length() >= 2) items.add(shorter);
+        int space = shorter.indexOf(' ');
+        if (space >= 2) items.add(shorter.substring(0, space));
+        List<String> list = new ArrayList<>(items);
+        return list.size() > 3 ? list.subList(0, 3) : list;
     }
 
     private static final String TAG = "Backdrop";

@@ -22,9 +22,15 @@ public class HomeRailPresenter extends Presenter {
 
     private final FuncPresenter.OnClickListener listener;
     private boolean expanded;
+    /** 二次开发：当前所在页面的导航项（片库页里的「片库」），不在焦点上也保持白色 */
+    private int current;
 
     public HomeRailPresenter(FuncPresenter.OnClickListener listener) {
         this.listener = listener;
+    }
+
+    public void setCurrent(int resId) {
+        this.current = resId;
     }
 
     public void setExpanded(boolean expanded) {
@@ -35,7 +41,7 @@ public class HomeRailPresenter extends Presenter {
     @Override
     public Presenter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent) {
         ViewHolder holder = new ViewHolder(AdapterHomeRailBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false));
-        holder.view.setOnFocusChangeListener((view, hasFocus) -> holder.render(expanded || hasFocus, hasFocus));
+        holder.view.setOnFocusChangeListener((view, hasFocus) -> holder.render(expanded || hasFocus, hasFocus || holder.current));
         return holder;
     }
 
@@ -45,7 +51,8 @@ public class HomeRailPresenter extends Presenter {
         ViewHolder holder = (ViewHolder) viewHolder;
         holder.binding.text.setText(item.getText());
         holder.binding.icon.setImageResource(item.getDrawable());
-        holder.render(expanded, holder.view.hasFocus());
+        holder.current = item.getResId() == current;
+        holder.render(expanded, holder.view.hasFocus() || holder.current);
         setOnClickListener(holder, view -> listener.onItemClick(item));
     }
 
@@ -56,6 +63,7 @@ public class HomeRailPresenter extends Presenter {
     public static class ViewHolder extends Presenter.ViewHolder {
 
         private final AdapterHomeRailBinding binding;
+        private boolean current;
 
         public ViewHolder(@NonNull AdapterHomeRailBinding binding) {
             super(binding.getRoot());

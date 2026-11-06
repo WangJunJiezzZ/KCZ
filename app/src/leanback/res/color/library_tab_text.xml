@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：片库顶部分类标签文字：焦点深色（白底上）、当前分类纯白、其余灰 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="#FF141414" android:state_focused="true" />
+    <item android:color="#FFFFFFFF" android:state_selected="true" />
+    <item android:color="#FFA3A3A3" />
+</selector>

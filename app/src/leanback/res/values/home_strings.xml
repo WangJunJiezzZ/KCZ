@@ -4,4 +4,9 @@
     <string name="home_nf_history">继续观看</string>
     <string name="home_nf_recommend">热门推荐</string>
     <string name="home_nf_resume_kicker">继续观看</string>
+    <!-- 二次开发：奈飞风格片库 -->
+    <string name="home_nf_home">首页</string>
+    <string name="library_no_filter">这个分类没有筛选条件</string>
+    <string name="library_filter_result">筛选结果</string>
+    <string name="library_empty">这个分类暂时没有内容</string>
 </resources>

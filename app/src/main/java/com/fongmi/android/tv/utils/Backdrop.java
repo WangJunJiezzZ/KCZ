@@ -63,7 +63,7 @@ public final class Backdrop {
             return;
         }
         EXECUTOR.submit(() -> {
-            String result = lookup(key, y, cacheKey);
+            String result = CACHE.containsKey(cacheKey) ? CACHE.get(cacheKey) : lookup(key, y, cacheKey);
             App.post(() -> callback.accept(result));
         });
     }
@@ -92,6 +92,54 @@ public final class Backdrop {
             }
         });
     }
+
+    /**
+     * 二次开发：片库横版卡片用。走单独的线程池（一屏几十张卡片同时查，不能堵住大图区的查询）；
+     * 结果在主线程回调（可能为空字符串），和大图区共用缓存，焦点移到卡片上时大图区直接命中。
+     */
+    public static void findForCard(String name, String year, Consumer<String> callback) {
+        String key = clean(name);
+        int y = parseYear(year);
+        if (!enabled() || key.isEmpty()) {
+            callback.accept("");
+            return;
+        }
+        String cacheKey = y > 0 ? key + "#" + y : key;
+        String cached = CACHE.get(cacheKey);
+        if (cached != null) {
+            callback.accept(cached);
+            return;
+        }
+        CARD.submit(() -> {
+            String url = CACHE.containsKey(cacheKey) ? CACHE.get(cacheKey) : lookup(key, y, cacheKey);
+            App.post(() -> callback.accept(url));
+        });
+    }
+
+    /** 二次开发：已经查过的结果（"" 表示查过但没有）；没查过返回 null。卡片绑定时先看缓存，命中就不用先显示海报再换 */
+    public static String cached(String name, String year) {
+        String key = clean(name);
+        int y = parseYear(year);
+        if (!enabled() || key.isEmpty()) return "";
+        return CACHE.get(y > 0 ? key + "#" + y : key);
+    }
+
+    /** 二次开发：TMDB 图片换成指定尺寸（卡片用 w780，省流量、解码快）；不是 TMDB 的地址原样返回 */
+    public static String sized(String url, String size) {
+        if (url == null || !url.startsWith(IMAGE)) return url;
+        return "https://image.tmdb.org/t/p/" + size + url.substring(IMAGE.length());
+    }
+
+    /**
+     * 后进先出：快速往下翻时，先查现在屏幕上的卡片，滑过去的那些排在后面。
+     * （普通线程池先进先出，当前这一行要等前面几行全部查完）
+     */
+    private static final ExecutorService CARD = new java.util.concurrent.ThreadPoolExecutor(3, 3, 0L, java.util.concurrent.TimeUnit.MILLISECONDS, new java.util.concurrent.LinkedBlockingDeque<Runnable>() {
+        @Override
+        public boolean offer(Runnable runnable) {
+            return offerFirst(runnable);
+        }
+    });
 
     /** 查询并写缓存（后台线程调用）：一种写法查不到就换下一种（去掉 -副标题、冒号后半段、3D、年份等） */
     private static String lookup(String key, int y, String cacheKey) {

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：片库顶部分类标签（纯文字） -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/text"
+    android:layout_width="wrap_content"
+    android:layout_height="32dp"
+    android:background="@drawable/library_tab_bg"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:gravity="center"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:singleLine="true"
+    android:textColor="@color/library_tab_text"
+    android:textSize="16sp"
+    android:textStyle="bold"
+    tools:text="电影" />

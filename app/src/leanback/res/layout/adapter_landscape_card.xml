@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：片库横版卡片（16:9）。
+     有剧照：剧照铺满 + 左下角片名；查不到剧照：模糊海报底 + 左侧清晰小海报 + 右侧片名；查询中：深灰底 + 片名 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="@dimen/library_card_width"
+    android:layout_height="@dimen/library_card_height"
+    android:background="@drawable/library_card_bg"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:foreground="@drawable/home_card_focus">
+
+    <!-- 查不到剧照时：同一张海报缩小再放大，柔和的模糊底色 -->
+    <ImageView
+        android:id="@+id/blur"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.55"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <ImageView
+        android:id="@+id/poster"
+        android:layout_width="@dimen/library_card_poster_width"
+        android:layout_height="match_parent"
+        android:layout_marginStart="6dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <!-- 底部渐变：保证片名在亮色剧照上也看得清 -->
+    <View
+        android:id="@+id/shade"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/library_card_shade" />
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="5dp"
+        android:ellipsize="end"
+        android:shadowColor="#CC000000"
+        android:shadowDy="1"
+        android:shadowRadius="4"
+        android:singleLine="true"
+        android:textColor="@color/white"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        tools:text="流浪地球 3" />
+
+    <TextView
+        android:id="@+id/badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="5dp"
+        android:background="@drawable/home_badge"
+        android:maxWidth="96dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:singleLine="true"
+        android:textColor="#E5E5E5"
+        android:textSize="9sp"
+        android:visibility="gone"
+        tools:text="更新至12集"
+        tools:visibility="visible" />
+
+    <!-- 行尾「查看全部」 -->
+    <TextView
+        android:id="@+id/more"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/home_more_bg"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.3"
+        android:textColor="@color/white"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:text="查看全部\n喜剧 ›" />
+</FrameLayout>

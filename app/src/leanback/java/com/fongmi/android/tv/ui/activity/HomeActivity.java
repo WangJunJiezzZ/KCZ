@@ -74,6 +74,7 @@ import com.fongmi.android.tv.service.DLNARendererService;
 import com.fongmi.android.tv.service.PlaybackService;
 import com.fongmi.android.tv.ui.adapter.BaseDiffCallback;
 import com.fongmi.android.tv.ui.base.BaseActivity;
+import com.fongmi.android.tv.ui.custom.Billboard;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
 import com.fongmi.android.tv.ui.custom.CustomSelector;
 import com.fongmi.android.tv.ui.custom.CustomTitleView;
@@ -124,10 +125,8 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     private HomeResumePresenter mPresenter;
     private HomeRailPresenter mRailPresenter;
     private SiteViewModel mViewModel;
-    private Runnable mBillboardTask;
-    private String mBillboardName;
-    /** 二次开发：背景剧照请求编号（换片 +1，作废过期回调） */
-    private int mBackdropToken;
+    /** 二次开发：顶部大图区（和片库共用） */
+    private Billboard mBillboard;
     private volatile int mRowsToken;
     private boolean mRailExpanded;
     private Result mResult;
@@ -166,7 +165,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         PermissionUtil.requestNotify(this);
         DLNARendererService.start(this);
         Updater.create().start(this);
-        setBillboardEffect();
+        mBillboard = new Billboard(this, mBinding.backdrop, mBinding.keyart, (View) mBinding.billTitle.getParent(), mBinding.kicker, mBinding.billTitle, mBinding.billMeta, mBinding.billDesc);
         setRecyclerView();
         setViewModel();
         setAdapter();
@@ -184,6 +183,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
                 if (mPresenter.isDelete()) setHistoryDelete(false);
+                mBillboard.setDimmed(rowsBefore(mAdapter, position) >= 2);
             }
         });
         // 左侧导航获得焦点时展开（显示文字 + 深色面板），离开时收起
@@ -197,12 +197,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         return false;
     }
 
-    // 奈飞效果：选中影片的图片清晰铺满右侧，左侧和底部由遮罩渐隐到黑色（不做模糊）
-    private void setBillboardEffect() {
-        mBinding.backdrop.setAlpha(1f);
-        mBinding.keyart.setVisibility(View.GONE);
-    }
-
     private void setRailExpanded(boolean expanded) {
         if (mRailExpanded == expanded) return;
         mRailExpanded = expanded;
@@ -213,8 +207,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     public void onFocus(Vod item) {
-        String meta = joinMeta(item.getYear(), item.getArea(), item.getTypeName(), item.getRemarks());
-        showBillboard(item.getSite() != null ? item.getSiteName() : getHome().getName(), item.getName(), meta, item.getContent(), item.hasBackdrop() ? item.getBackdrop() : null, item.getPic(), item.getYear());
+        mBillboard.show(item.getSite() != null ? item.getSiteName() : getHome().getName(), item);
         prefetchNeighbors(item);
     }
 
@@ -236,167 +229,21 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         for (int offset : PREFETCH_OFFSETS) {
             int i = index + offset;
             if (i < 0 || i >= items.size() || !(items.get(i) instanceof Vod vod)) continue;
-            if (vod.hasBackdrop()) preloadBackdrop(vod.getBackdrop());
-            else Backdrop.prefetch(vod.getName(), vod.getYear(), this::preloadBackdrop);
+            mBillboard.prefetch(vod);
         }
-    }
-
-    /** 按背景控件同样的尺寸和裁切预下载解码进内存缓存，之后 loadBackdrop 命中同一个缓存键 */
-    private void preloadBackdrop(String url) {
-        int width = mBinding.backdrop.getWidth();
-        int height = mBinding.backdrop.getHeight();
-        if (TextUtils.isEmpty(url) || width <= 0 || height <= 0 || isFinishing() || isDestroyed()) return;
-        Glide.with(this).load(ImgUtil.getUrl(url)).centerCrop().preload(width, height);
     }
 
     @Override
     public void onFocus(History item) {
-        String meta = joinMeta(item.getSiteName(), item.getVodRemarks());
-        showBillboard(getString(R.string.home_nf_resume_kicker), item.getVodName(), meta, "", null, item.getVodPic(), "");
+        String meta = Billboard.joinMeta(item.getSiteName(), item.getVodRemarks());
+        mBillboard.show(getString(R.string.home_nf_resume_kicker), item.getVodName(), meta, "", null, item.getVodPic(), "");
     }
 
-    /**
-     * 焦点快速移动时只加载最后停留的那一张，避免频繁请求图片。
-     * 大图优先级：源提供的横版剧照 hd → TMDB 高清剧照 → 海报 poster
-     */
-    private void showBillboard(String kicker, String name, String meta, String desc, String hd, String poster, String year) {
-        App.removeCallbacks(mBillboardTask);
-        mBillboardTask = () -> {
-            // 用立即更新的变量判断"当前影片"，不依赖带动画的片名文字（快速切换时动画会被打断）
-            if (name.equals(mBillboardName)) return;
-            mBillboardName = name;
-            String text = desc == null ? "" : desc.replaceAll("<[^>]+>", "").replaceAll("\\s+", " ").trim();
-            // 文字：淡出 + 左移 → 换内容 → 淡入归位（和 HTML 设计稿一致的过渡）
-            View info = (View) mBinding.billTitle.getParent();
-            info.animate().cancel();
-            info.animate().alpha(0f).translationX(-ResUtil.dp2px(12)).setDuration(140).withEndAction(() -> {
-                mBinding.kicker.setText(kicker);
-                mBinding.billTitle.setText(name);
-                mBinding.billMeta.setText(meta);
-                mBinding.billMeta.setVisibility(TextUtils.isEmpty(meta) ? View.GONE : View.VISIBLE);
-                mBinding.billDesc.setText(text);
-                mBinding.billDesc.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
-                info.setTranslationX(ResUtil.dp2px(12));
-                info.animate().alpha(1f).translationX(0f).setDuration(260).start();
-            }).start();
-            // 背景剧照：新旧两张交叉淡化，而不是直接替换
-            int token = ++mBackdropToken; // 换片就作废上一部还没回来的剧照查询，旧图晚到不会盖住新图
-            if (!TextUtils.isEmpty(hd)) showBackdrop(hd);
-            else if (!Backdrop.enabled()) showPosterFallback(poster);
-            else {
-                // 等 TMDB 结果时只把当前背景压暗（不先换成放大的糊海报，也不让上一部的剧照亮着）；
-                // 缓存命中时回调是同步的，压暗动画会被立即取消，不会闪
-                hideKeyart();
-                mBinding.backdrop.animate().cancel();
-                mBinding.backdrop.animate().alpha(DIM_ALPHA).setDuration(200).start();
-                Backdrop.find(name, year, url -> {
-                    if (token != mBackdropToken) return;
-                    if (url.isEmpty()) showPosterFallback(poster);
-                    else showBackdrop(url);
-                });
-            }
-        };
-        App.post(mBillboardTask, 120);
-    }
-
-    // ===== 二次开发：背景三种状态 =====
-    /** 等待剧照时背景的透明度 */
-    private static final float DIM_ALPHA = 0.3f;
-    /** 海报垫底时背景的透明度（模糊海报再压暗，保证文字和海报卡片突出） */
-    private static final float POSTER_BG_ALPHA = 0.55f;
-    /** 把海报缩到这么小再放大铺满，系统缩放的平滑效果就是柔和的模糊（API 24 也能用，不依赖 RenderEffect） */
-    private static final int BLUR_WIDTH = 24;
-    private static final int BLUR_HEIGHT = 36;
-
-    /** 有横版高清剧照：清晰铺满，不显示海报卡片 */
-    private void showBackdrop(String url) {
-        hideKeyart();
-        setBackdropAlpha(1f);
-        loadBackdrop(url, false);
-    }
-
-    /** 只有竖版海报：右侧显示清晰海报卡片，背景用同一张海报模糊 + 压暗，不把小海报放大铺满（会糊） */
-    private void showPosterFallback(String poster) {
-        if (TextUtils.isEmpty(poster)) {
-            hideKeyart();
-            setBackdropAlpha(DIM_ALPHA);
-            return;
-        }
-        setBackdropAlpha(POSTER_BG_ALPHA);
-        loadBackdrop(poster, true);
-        Glide.with(mBinding.keyart).load(ImgUtil.getUrl(poster)).centerCrop().into(mBinding.keyart);
-        mBinding.keyart.animate().cancel();
-        if (mBinding.keyart.getVisibility() != View.VISIBLE) {
-            mBinding.keyart.setAlpha(0f);
-            mBinding.keyart.setVisibility(View.VISIBLE);
-        }
-        mBinding.keyart.animate().alpha(1f).setDuration(260).start();
-    }
-
-    private void hideKeyart() {
-        mBinding.keyart.animate().cancel();
-        mBinding.keyart.setVisibility(View.GONE);
-    }
-
-    private void setBackdropAlpha(float alpha) {
-        mBinding.backdrop.animate().cancel();
-        mBinding.backdrop.animate().alpha(alpha).setDuration(260).start();
-    }
-
-    private void loadBackdrop(String pic, boolean blur) {
-        if (TextUtils.isEmpty(pic)) return;
-        RequestBuilder<Drawable> builder = Glide.with(mBinding.backdrop)
-                .load(ImgUtil.getUrl(pic))
-                .placeholder(snapshotBackdrop())
-                .transition(DrawableTransitionOptions.with(new DrawableCrossFadeFactory.Builder(600).setCrossFadeEnabled(true).build()));
-        if (blur) builder = builder.override(BLUR_WIDTH, BLUR_HEIGHT);
-        else builder = builder.listener(new RequestListener<>() {
-            @Override
-            public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean isFirstResource) {
-                return false;
-            }
-
-            @Override
-            public boolean onResourceReady(@NonNull Drawable resource, @NonNull Object model, Target<Drawable> target, @NonNull DataSource dataSource, boolean isFirstResource) {
-                startPushIn();
-                return false;
-            }
-        });
-        builder.centerCrop().into(mBinding.backdrop);
-    }
-
-    /**
-     * 二次开发：新剧照出现时从 1.04 倍缓慢缩回原大小（配合交叉淡化，奈飞式的轻微推镜感）。
-     * 只用于清晰剧照（目标透明度就是 1）：cancel 会打断 setBackdropAlpha 的恢复动画，所以透明度在这里一起带到 1，
-     * 否则预加载命中内存、图片同步到达时，背景会停在压暗状态
-     */
-    private void startPushIn() {
-        View view = mBinding.backdrop;
-        view.animate().cancel();
-        view.setScaleX(1.04f);
-        view.setScaleY(1.04f);
-        view.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(1600).setInterpolator(new DecelerateInterpolator()).start();
-    }
-
-    /**
-     * 二次开发：把当前背景画面拷贝成一张独立的图，作为新图加载期间的占位（交叉淡化的起点）。
-     * 不能直接用 getDrawable()：Glide 开始新请求时会释放旧图，旧 Bitmap 可能被回收/复用，
-     * 占位还引用它就会崩（Canvas: trying to use a recycled bitmap）。
-     */
-    private Drawable snapshotBackdrop() {
-        Drawable current = mBinding.backdrop.getDrawable();
-        int width = mBinding.backdrop.getWidth();
-        int height = mBinding.backdrop.getHeight();
-        if (current == null || width <= 0 || height <= 0) return null;
-        try {
-            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(bitmap);
-            canvas.concat(mBinding.backdrop.getImageMatrix());
-            current.draw(canvas);
-            return new BitmapDrawable(getResources(), bitmap);
-        } catch (Throwable e) {
-            return null;
-        }
+    /** 二次开发：焦点所在行前面有几行卡片（行标题不算）；翻到第三行起把大图区压暗 */
+    private static int rowsBefore(ObjectAdapter adapter, int position) {
+        int count = 0;
+        for (int i = 0; adapter != null && i < Math.min(position, adapter.size()); i++) if (adapter.get(i) instanceof ListRow) count++;
+        return count;
     }
 
     private static boolean isFirstInRow(View focused) {
@@ -408,12 +255,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             parent = parent.getParent();
         }
         return parent instanceof HorizontalGridView grid && grid.getChildAdapterPosition(child) == 0;
-    }
-
-    private static String joinMeta(String... parts) {
-        List<String> items = new ArrayList<>();
-        for (String part : parts) if (!TextUtils.isEmpty(part) && !items.contains(part.trim())) items.add(part.trim());
-        return TextUtils.join("  ·  ", items);
     }
 
     private void checkAction(Intent intent) {
@@ -663,7 +504,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     @Override
     public void onMore(HomeMore item) {
-        VodActivity.start(this, item.getSiteKey(), item.getResult(), item.getTypeId());
+        LibraryActivity.start(this, item.getSiteKey(), item.getResult(), item.getTypeId());
     }
 
     // 二次开发：推荐内容统一放进一行横向滑动的海报（不再按网格分多行）
@@ -809,7 +650,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public void onItemClick(Func item) {
         mBackToContent = true;
-        if (item.getResId() == R.string.home_vod) VodActivity.start(this, mResult);
+        if (item.getResId() == R.string.home_vod) LibraryActivity.start(this, getHome().getKey(), mResult, null);
         else if (item.getResId() == R.string.home_live) LiveActivity.start(this);
         else if (item.getResId() == R.string.home_keep) KeepActivity.start(this);
         else if (item.getResId() == R.string.home_push) PushActivity.start(this);

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：片库顶部分类标签：焦点 = 白色胶囊；当前分类 = 底部白色短线；平时无底 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape>
+            <solid android:color="@color/white" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    <item android:state_selected="true">
+        <layer-list>
+            <item android:gravity="bottom|center_horizontal" android:width="18dp" android:height="3dp" android:bottom="2dp">
+                <shape>
+                    <solid android:color="@color/white" />
+                    <corners android:radius="2dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

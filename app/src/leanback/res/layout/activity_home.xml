@@ -8,24 +8,39 @@
     android:background="@color/home_bg">
 
     <!-- ===== 顶部大图区 ===== -->
-    <!-- 二次开发：大图区铺满全屏（原来只有上面 420dp，翻到最后一行时下面是一大块纯黑） -->
+    <!-- 二次开发：大图区（剧照在右上角，其余是黑底） -->
     <FrameLayout
         android:id="@+id/billboard"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- 二次开发：背景剧照全屏 16:9（和剧照原比例一致，不裁切不放大，像奈飞一样清晰）；
-             左侧用宽渐变压暗保证文字可读。原来只铺右侧 740dp，剧照要放大 1.5 倍并裁掉两边，所以发软 -->
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/backdrop"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop" />
+        <!-- 二次开发：剧照只占右上角一块 16:9 区域（宽度为屏幕 85%，Billboard 里按屏幕算尺寸），
+             左边和底部渐隐到黑色；卡片行底下是黑底，卡片不再压在剧照上 -->
+        <FrameLayout
+            android:id="@+id/stage"
+            android:layout_width="672dp"
+            android:layout_height="378dp"
+            android:layout_gravity="end|top">
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/home_scrim_edge" />
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/backdrop"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop" />
+
+            <View
+                android:id="@+id/stageFadeLeft"
+                android:layout_width="336dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/stage_fade_left" />
+
+            <View
+                android:id="@+id/stageFadeBottom"
+                android:layout_width="match_parent"
+                android:layout_height="208dp"
+                android:layout_gravity="bottom"
+                android:background="@drawable/stage_fade_bottom" />
+        </FrameLayout>
 
         <!-- 二次开发：查不到横版剧照时，右侧显示清晰的竖版海报卡片（背景则是同一张海报模糊压暗），不把小海报放大铺满 -->
         <com.google.android.material.imageview.ShapeableImageView
@@ -39,13 +54,6 @@
             android:scaleType="centerCrop"
             android:visibility="invisible"
             app:shapeAppearanceOverlay="@style/HomeCardShape" />
-
-        <!-- 底部压暗：保证海报行清楚，但不压成纯黑，画面能透出来 -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="320dp"
-            android:layout_gravity="bottom"
-            android:background="@drawable/home_scrim_bottom" />
 
         <!-- 顶部轻微压暗：保证右上角时钟、源名称清楚 -->
         <View
@@ -61,21 +69,12 @@
             android:layout_marginTop="22dp"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/wordmark"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:letterSpacing="0.14"
-                android:text="@string/app_name"
-                android:textColor="@color/home_gold"
-                android:textSize="17sp"
-                android:textStyle="bold" />
-
+            <!-- 二次开发：去掉左上角「看锤子」字样；上边距补上它原来占的高度，下面的片名位置不变 -->
             <TextView
                 android:id="@+id/kicker"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="40dp"
+                android:layout_marginTop="62dp"
                 android:letterSpacing="0.08"
                 android:textColor="@color/home_text_dim"
                 android:textSize="12sp"

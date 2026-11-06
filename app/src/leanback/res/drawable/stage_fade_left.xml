@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：右上角剧照区的左侧渐隐（占剧照区左边 45%，只压文字后面）：最左边和背景一样黑，向右过渡到透明 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:angle="0"
+        android:centerColor="#590B0B0B"
+        android:centerX="0.3"
+        android:endColor="#000B0B0B"
+        android:startColor="#FF0B0B0B" />
+</shape>

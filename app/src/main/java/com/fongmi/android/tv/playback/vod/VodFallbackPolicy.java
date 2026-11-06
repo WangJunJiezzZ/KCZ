@@ -38,6 +38,7 @@ class VodFallbackPolicy {
     }
 
     void search(String keyword, boolean autoFallback) {
+        state.getSources().clear();
         state.setSearchKeyword(keyword);
         state.setAutoFallback(autoFallback);
         state.setSelectFirstSource(autoFallback);
@@ -48,7 +49,8 @@ class VodFallbackPolicy {
     void onSearchResult(Result result) {
         List<Vod> items = new ArrayList<>(result.getList());
         items.removeIf(this::mismatch);
-        state.setSources(items);
+        // 二次开发：各站结果分批到达，要累积（原来每批覆盖，界面却是追加，换源列表会丢项、重复）
+        state.addSources(items);
         host.renderSources(state.getSources());
         if (state.isSelectFirstSource()) nextSource();
         if (items.isEmpty()) return;
@@ -97,7 +99,10 @@ class VodFallbackPolicy {
     }
 
     private boolean isPass(Site item) {
-        if (state.isAutoFallback() && !item.isChangeable()) return false;
+        // 二次开发：从首页索引站点进来（msearch:）本来就要全站找片，不受 changeable 限制；
+        // 很多配置把所有站都设成 changeable=0，不放开的话一个站都搜不到。播放失败的自动换源仍然遵守 changeable
+        boolean fromIndex = host.getVodId().startsWith(VodPlaybackController.SEARCH_PREFIX);
+        if (state.isAutoFallback() && !fromIndex && !item.isChangeable()) return false;
         return item.isSearchable();
     }
 

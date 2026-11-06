@@ -296,7 +296,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     protected void initView(Bundle savedInstanceState) {
         super.initView(savedInstanceState);
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (v, insets) -> setStatusBar(insets));
-        mKeyDown = CustomKeyDown.create(this, mBinding.player);
+        mKeyDown = CustomKeyDown.create(this, mBinding.player).halfSide();
         mFrameParams = mBinding.video.getLayoutParams();
         mBinding.progressLayout.showContent();
         mBinding.swipeLayout.setEnabled(false);
@@ -309,6 +309,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         checkDanmakuImg();
         setRecyclerView();
         setVideoView();
+        hideFullscreenExtras();
         setViewModel();
         showProgress();
         setAnimator();
@@ -344,6 +345,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.action.video.setOnClickListener(this::onTrack);
         mBinding.control.action.scale.setOnClickListener(view -> onScale());
         mBinding.control.action.speed.setOnClickListener(view -> onSpeed());
+        mBinding.control.full.setOnClickListener(view -> onFull());
+        mBinding.control.action.full.setOnClickListener(view -> onFull());
         mBinding.control.action.reset.setOnClickListener(view -> onReset());
         mBinding.control.action.replay.setOnClickListener(view -> onReplay());
         mBinding.control.action.parse.setOnClickListener(view -> onParse());
@@ -702,6 +705,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     public void renderSources(List<Vod> items) {
+        mQuickAdapter.clear();
         mQuickAdapter.addAll(items);
         mBinding.quick.setVisibility(mQuickAdapter.isEmpty() ? View.GONE : View.VISIBLE);
     }
@@ -1049,6 +1053,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         hideControl();
     }
 
+    /** 二次开发：进度条右侧的全屏/退出全屏按钮 */
+    private void onFull() {
+        if (isLock()) return;
+        if (isFullscreen()) exitFullscreen();
+        else enterFullscreen();
+        hideControl();
+    }
+
     private void onReplay() {
         mVod.replay();
     }
@@ -1256,7 +1268,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                     return;
                 }
                 if (mLoginClosed) {
-                    postLogin(token, detail, config, () -> showError(getString(R.string.mobile_login_cancelled)));
+                    // 用户关掉弹窗后可能已换到别的线路在播了，这时不要再盖一层「请点击重试」
+                    postLogin(token, detail, config, () -> {
+                        if (service() == null || !player().isPlaying()) showError(getString(R.string.mobile_login_cancelled));
+                    });
                     return;
                 }
             }
@@ -1298,6 +1313,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.right.rotate.setVisibility(isFullscreen() && !isLock() ? View.VISIBLE : View.GONE);
         mBinding.control.keep.setVisibility(mHistory == null || isFullscreen() ? View.GONE : View.VISIBLE);
         mBinding.control.action.getRoot().setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
+        // 竖屏小窗：进度条右侧的全屏按钮；全屏：按钮栏最右侧的退出全屏按钮（action.full，随按钮栏显示）
+        mBinding.control.full.setVisibility(isFullscreen() ? View.GONE : View.VISIBLE);
         mBinding.control.right.lock.setVisibility(isFullscreen() ? View.VISIBLE : View.GONE);
         mBinding.control.action.parse.setVisibility(isUseParse() ? View.VISIBLE : View.GONE);
         mBinding.control.info.setVisibility(player().isEmpty() ? View.GONE : View.VISIBLE);
@@ -1464,6 +1481,9 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     protected void onReclaim() {
+        // 二次开发：扫码登录进行中（垫页刚关、或从夸克 App 回来）不要立刻重播：重播会取消登录轮询并再次报未登录；
+        // 登录成功后轮询会自己刷新，用户关掉弹窗则提示重试
+        if (mLoginRunning) return;
         mVod.refresh();
     }
 
@@ -1564,7 +1584,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setTrackVisible() {
-        PlaybackAction.setTracks(player(), mBinding.control.action.text, mBinding.control.action.audio, mBinding.control.action.video);
+        // 二次开发：字幕/音轨/视轨不放在全屏按钮栏（竖屏「设置」弹窗里仍可用）
+        hideFullscreenExtras();
+    }
+
+    /**
+     * 二次开发：全屏底部按钮栏精简，去掉 EXO、刷新、重播、循环、字幕、音轨、视轨、片头、片尾；
+     * 视图保留（设置弹窗会读它们的文字/选中状态、点击会转发给它们），只是不显示。
+     */
+    private void hideFullscreenExtras() {
+        var action = mBinding.control.action;
+        for (View view : new View[]{action.player, action.reset, action.replay, action.repeat, action.text, action.audio, action.video, action.opening, action.ending}) view.setVisibility(View.GONE);
     }
 
     private void setMediaOptionVisible() {

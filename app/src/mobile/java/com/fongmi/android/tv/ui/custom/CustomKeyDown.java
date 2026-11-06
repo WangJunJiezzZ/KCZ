@@ -35,6 +35,7 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
     private boolean animating;
     private boolean touch;
     private boolean lock;
+    private boolean halfSide;
     private float bright;
     private float volume;
     private float scale;
@@ -85,12 +86,34 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
         return e.getPointerCount() > 1;
     }
 
+    /**
+     * 二次开发：原来用 ResUtil.getScreenWidth 判断屏幕边缘，全屏横屏时它可能还返回竖屏宽度（1440），
+     * 导致右边近一半区域（x &gt; 1440-24dp）全被当成边缘、点击没反应。改用当前窗口的实际宽高。
+     */
     private boolean isEdge(MotionEvent e) {
-        return ResUtil.isEdge(activity, e, ResUtil.dp2px(24));
+        int edge = ResUtil.dp2px(24);
+        View decor = activity.getWindow().getDecorView();
+        int width = decor.getWidth();
+        int height = decor.getHeight();
+        if (width <= 0 || height <= 0) return ResUtil.isEdge(activity, e, edge);
+        return e.getRawX() < edge || e.getRawX() > width - edge || e.getRawY() < edge || e.getRawY() > height - edge;
+    }
+
+    /** 播放区域宽度（触摸坐标是相对播放区域的） */
+    private int width() {
+        int width = videoView.getWidth();
+        return width > 0 ? width : ResUtil.getScreenWidth(activity);
+    }
+
+    /** 二次开发：播放页整个左半屏/右半屏上下滑都调亮度/音量（原来只有最外侧 1/4）；直播页保持原样，中间上下滑用来换台 */
+    public CustomKeyDown halfSide() {
+        this.halfSide = true;
+        return this;
     }
 
     private boolean isSide(MotionEvent e) {
-        int four = ResUtil.getScreenWidth(activity) / 4;
+        if (halfSide) return true;
+        int four = width() / 4;
         return !(e.getX() > four) || !(e.getX() < four * 3);
     }
 
@@ -124,7 +147,7 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
         if (isMultiple(e1) || isEdge(e1) || changeScale || lock || changeSpeed) return true;
         float deltaX = e2.getX() - e1.getX();
         float deltaY = e1.getY() - e2.getY();
-        if (touch) checkFunc(Math.abs(deltaX), Math.abs(deltaY), e2);
+        if (touch) checkFunc(Math.abs(deltaX), Math.abs(deltaY), e1);
         if (changeTime) listener.onSeeking(time = (long) (deltaX * 50));
         if (changeBright) setBright(deltaY);
         if (changeVolume) setVolume(deltaY);
@@ -152,10 +175,11 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
         return true;
     }
 
-    private void checkFunc(float distanceX, float distanceY, MotionEvent e2) {
+    /** start 是手指按下的位置：按「从哪一侧开始滑」决定调亮度还是音量 */
+    private void checkFunc(float distanceX, float distanceY, MotionEvent start) {
         if ((float) Math.sqrt(distanceX * distanceX + distanceY * distanceY) < ResUtil.dp2px(20)) return;
         if (distanceX >= distanceY) changeTime = true;
-        else if (isSide(e2)) checkSide(e2);
+        else if (isSide(start)) checkSide(start);
         touch = false;
     }
 
@@ -171,7 +195,7 @@ public class CustomKeyDown extends GestureDetector.SimpleOnGestureListener imple
     }
 
     private void checkSide(MotionEvent e2) {
-        int half = ResUtil.getScreenWidth(activity) / 2;
+        int half = width() / 2;
         if (e2.getX() > half) changeVolume = true;
         else changeBright = true;
     }

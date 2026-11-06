@@ -20,7 +20,9 @@ public final class MobileLoginLink {
     public static boolean isAllowed(String disk, String value) {
         if (disk == null || value == null) return false;
         try {
-            URI uri = URI.create(value);
+            // 网盘二维码常带 | 等 java.net.URI 不接受的字符（如夸克 uc_biz_str=S:custom|OPT:...），
+            // 直接 URI.create 会抛异常导致误判；先转义再校验，域名校验规则不变。
+            URI uri = URI.create(escape(value.trim()));
             if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getUserInfo() != null
                     || uri.getHost() == null || (uri.getPort() != -1 && uri.getPort() != 443)) return false;
             List<String> domains = switch (disk) {
@@ -35,5 +37,15 @@ public final class MobileLoginLink {
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    /** 把 URI 不允许的 ASCII 字符百分号编码；被编码到主机部分的字符会让 getHost() 为 null，从而被拒绝。 */
+    private static String escape(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        for (char c : value.toCharArray()) {
+            if (c <= 0x20 || c == 0x7f || "\"<>\\^`{|}".indexOf(c) >= 0) out.append(String.format("%%%02X", (int) c));
+            else out.append(c);
+        }
+        return out.toString();
     }
 }

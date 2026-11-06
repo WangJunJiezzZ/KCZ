@@ -115,5 +115,16 @@
             style="@style/Control"
             android:text="@string/play_ed" />
 
+        <!-- 二次开发：全屏时按钮栏最右侧的退出全屏按钮（竖屏小窗的全屏按钮在进度条右侧） -->
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/full"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/ic_control_fullscreen_exit" />
+
     </androidx.appcompat.widget.LinearLayoutCompat>
 </HorizontalScrollView>

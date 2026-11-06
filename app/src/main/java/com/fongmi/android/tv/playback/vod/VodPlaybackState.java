@@ -137,8 +137,7 @@ public class VodPlaybackState {
         return sources;
     }
 
-    void setSources(List<Vod> items) {
-        sources.clear();
+    void addSources(List<Vod> items) {
         sources.addAll(items);
     }
 

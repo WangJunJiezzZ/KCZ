@@ -86,5 +86,24 @@
             tools:listitem="@layout/adapter_epg_data" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
+
+    <!-- 二次开发：选台列表显示时右上角的返回键（控制栏自带的返回键在左上角，会被列表挡住） -->
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/exit"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:background="@drawable/shape_live_exit"
+        android:drawableStart="@drawable/ic_control_back"
+        android:drawablePadding="2dp"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="16dp"
+        android:text="@string/live_exit"
+        android:textColor="@color/white"
+        android:textSize="15sp"
+        android:visibility="gone"
+        tools:visibility="visible" />
 </FrameLayout>
 

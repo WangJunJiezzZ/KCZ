@@ -44,10 +44,14 @@ public class EpisodeListDialog extends BaseSideSheetDialog implements EpisodeAda
 
     @Override
     protected int getWidth() {
-        int minWidth = ResUtil.dp2px(200);
-        int maxWidth = ResUtil.getScreenWidth() / 3;
-        for (Episode item : episodes) minWidth = Math.max(minWidth, ResUtil.getTextWidth(item.getName(), 14));
-        return Math.min(minWidth, maxWidth);
+        // 二次开发：原来上限是 ResUtil.getScreenWidth()/3，全屏横屏时它可能拿到竖屏宽度（1440/3=480px），抽屉被压得很窄；
+        // 改按当前窗口实际宽度算，上限放宽到一半，剧集名（常带文件大小、清晰度）能显示完整些
+        int screen = requireActivity().getWindow().getDecorView().getWidth();
+        if (screen <= 0) screen = ResUtil.getScreenWidth(requireActivity());
+        int width = ResUtil.dp2px(280);
+        int maxWidth = Math.max(width, screen / 2);
+        for (Episode item : episodes) width = Math.max(width, ResUtil.getTextWidth(item.getName(), 14) + ResUtil.dp2px(48));
+        return Math.min(width, maxWidth);
     }
 
     @Override

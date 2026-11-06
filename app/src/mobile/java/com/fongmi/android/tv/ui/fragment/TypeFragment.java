@@ -221,7 +221,9 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         } else if (item.isFolder()) {
             getParent().openFolder(item.getId(), mExtends);
         } else {
-            if (getSite().isIndex()) SearchActivity.start(requireActivity(), item.getName());
+            // 二次开发：索引站的影片没有播放地址，原来会进搜索结果页让人挑站点；
+            // 改为直接进播放页按片名全站搜索、自动播第一个同名结果，其余结果在播放页底部换源（长按仍进搜索结果页）
+            if (getSite().isIndex()) VideoActivity.start(requireActivity(), getKey(), "msearch:" + item.getName(), item.getName(), item.getPic());
             else VideoActivity.start(requireActivity(), getKey(), item.getId(), item.getName(), item.getPic(), isFolder() ? item.getName() : null);
         }
     }

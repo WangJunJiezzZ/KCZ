@@ -702,6 +702,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
 
     @Override
     public void renderSources(List<Vod> items) {
+        mQuickAdapter.clear();
         mQuickAdapter.addAll(items);
         mBinding.quick.setVisibility(mQuickAdapter.isEmpty() ? View.GONE : View.VISIBLE);
     }

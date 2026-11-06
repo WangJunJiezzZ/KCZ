@@ -157,12 +157,31 @@
         android:orientation="vertical"
         android:paddingBottom="8dp">
 
-        <androidx.media3.ui.PlayerSeekView
-            android:id="@+id/seek"
+        <!-- 二次开发：进度条右侧加全屏/退出全屏按钮（很多人不知道双击能全屏） -->
+        <androidx.appcompat.widget.LinearLayoutCompat
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <androidx.media3.ui.PlayerSeekView
+                android:id="@+id/seek"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="16dp"
+                android:paddingEnd="8dp" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/full"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:src="@drawable/ic_control_fullscreen" />
+
+        </androidx.appcompat.widget.LinearLayoutCompat>
 
         <include
             android:id="@+id/action"

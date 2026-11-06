@@ -93,6 +93,11 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     private Runnable mR1;
     private Runnable mR2;
     private Runnable mR3;
+    /** 二次开发：进入直播页先展示选台列表，3 秒内没碰就收起（让用户知道有选台目录） */
+    private static final long ENTRY_HINT_MS = 3000;
+    private final Runnable mEntryHint = this::hideUI;
+    private final Runnable mErrorHint = this::showErrorHint;
+    private boolean entryHinted;
     private List<Group> mHides;
     private Group mGroup;
     private Channel mChannel;
@@ -178,6 +183,16 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     @SuppressLint("ClickableViewAccessibility")
     protected void initEvent() {
         mBinding.control.back.setOnClickListener(view -> onBack());
+        mBinding.exit.setOnClickListener(view -> onBack());
+        RecyclerView.OnItemTouchListener keepList = new RecyclerView.SimpleOnItemTouchListener() {
+            @Override
+            public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+                App.removeCallbacks(mEntryHint); // 用户在翻列表，不要自动收起
+                return false;
+            }
+        };
+        mBinding.group.addOnItemTouchListener(keepList);
+        mBinding.channel.addOnItemTouchListener(keepList);
         mBinding.control.cast.setOnClickListener(view -> onCast());
         mBinding.control.info.setOnClickListener(view -> onInfo());
         mBinding.control.play.setOnClickListener(view -> checkPlay());
@@ -289,6 +304,14 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
         for (Group group : live.getGroups()) (group.isHidden() ? mHides : items).add(group);
         mGroupAdapter.addAll(items);
         setPosition(LiveConfig.get().findKeepPosition(items));
+        showEntryHint();
+    }
+
+    private void showEntryHint() {
+        if (entryHinted || mGroupAdapter.getItemCount() == 0 || isInPictureInPictureMode()) return;
+        entryHinted = true;
+        showUI();
+        App.post(mEntryHint, ENTRY_HINT_MS);
     }
 
     private void setWidth(Live live) {
@@ -349,6 +372,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void onBack() {
+        if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
         finish();
     }
 
@@ -456,14 +480,17 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     }
 
     private void hideUI() {
+        App.removeCallbacks(mEntryHint);
         if (isGone(mBinding.recycler)) return;
         mBinding.recycler.setVisibility(View.GONE);
+        mBinding.exit.setVisibility(View.GONE);
         setPosition();
     }
 
     private void showUI() {
         if (isVisible(mBinding.recycler) || mGroupAdapter.getItemCount() == 0) return;
         mBinding.recycler.setVisibility(View.VISIBLE);
+        mBinding.exit.setVisibility(View.VISIBLE);
         mBinding.channel.requestFocus();
         setPosition();
         hideEpg();
@@ -729,7 +756,14 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     @Override
     public void resetPlaybackForError(String msg) {
         PlaybackReset.afterError(player());
-        showError(msg);
+        showError(msg + "\n" + getString(R.string.live_error_hint));
+        // 二次开发：1 秒后错误还在（没有自动换线恢复）就弹出选台列表，免得用户对着黑屏不知道怎么办
+        App.post(mErrorHint, 1000);
+    }
+
+    private void showErrorHint() {
+        if (isGone(mBinding.widget.error) || isInPictureInPictureMode() || isVisible(mBinding.control.getRoot())) return;
+        showUI();
     }
 
     @Override
@@ -1131,7 +1165,7 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
     @Override
     protected void onDestroy() {
         Source.get().exit();
-        App.removeCallbacks(mR1, mR2, mR3);
+        App.removeCallbacks(mR1, mR2, mR3, mEntryHint, mErrorHint);
         super.onDestroy();
     }
 }

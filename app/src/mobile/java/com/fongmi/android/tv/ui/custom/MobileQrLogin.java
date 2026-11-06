@@ -150,7 +150,7 @@ public final class MobileQrLogin {
                 boolean allowed = MobileLoginLink.isAllowed(disk, value);
                 hint.setText(allowed ? R.string.mobile_login_same_device_hint : R.string.mobile_login_album_hint);
                 actions.addView(hint, new LinearLayout.LayoutParams(-1, -2));
-                if (allowed) button(actions, R.string.mobile_login_open_link, () -> open(value));
+                if (allowed) button(actions, R.string.mobile_login_open_link, () -> open(value.trim()));
                 button(actions, R.string.mobile_login_save_qr, () -> save(bitmap));
                 boolean phone = activity.getResources().getConfiguration().smallestScreenWidthDp < 600;
                 if (phone) updateSourceCaption(image.getRootView());

@@ -22,7 +22,7 @@ import java.util.Map;
 public class VodPlaybackController {
 
     private static final String PUSH_PREFIX = "push://";
-    private static final String SEARCH_PREFIX = "msearch:";
+    static final String SEARCH_PREFIX = "msearch:";
 
     private final VodPlaybackHost host;
     private final VodPlaybackState state;

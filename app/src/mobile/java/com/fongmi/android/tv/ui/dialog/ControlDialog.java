@@ -16,6 +16,7 @@ import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.databinding.ActivityVideoBinding;
 import com.fongmi.android.tv.databinding.DialogControlBinding;
+import com.fongmi.android.tv.playback.PlaybackAction;
 import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.setting.SpeedSetting;
 import com.fongmi.android.tv.ui.adapter.ParseAdapter;
@@ -173,9 +174,8 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
     }
 
     public void setTrackVisible() {
-        binding.text.setVisibility(parent.control.action.text.getVisibility());
-        binding.audio.setVisibility(parent.control.action.audio.getVisibility());
-        binding.video.setVisibility(parent.control.action.video.getVisibility());
+        // 二次开发：全屏按钮栏已不放字幕/音轨/视轨，这里改为直接按播放器轨道判断，不再照抄按钮栏的可见性
+        if (player != null) PlaybackAction.setTracks(player, binding.text, binding.audio, binding.video);
         binding.track.setVisibility(binding.text.getVisibility() == View.GONE && binding.audio.getVisibility() == View.GONE && binding.video.getVisibility() == View.GONE ? View.GONE : View.VISIBLE);
     }
 

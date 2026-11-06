@@ -2,7 +2,11 @@ package com.fongmi.android.tv.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.WindowManager;
+import android.view.inspector.WindowInspector;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -27,12 +31,15 @@ public class LoginBridgeActivity extends AppCompatActivity {
 
     private static final String MODE_HOST = "host";
     private static final String MODE_TRIGGER = "trigger";
-    /** 站源关掉上层后，这么久还没弹出二维码就退出，免得透明页挡住遥控器 */
-    private static final long NO_DIALOG_FINISH_MS = 3000;
+    /** 站源关掉上层后，这么久还没弹出二维码就退出，免得透明页挡住界面（真机拉二维码要联网，原来 3 秒太紧） */
+    private static final long NO_DIALOG_FINISH_MS = 10000;
+    private static final long WATCH_INTERVAL_MS = 500;
 
     private int resumeCount;
     private boolean dialogShown;
+    private long watchStart;
     private MobileQrLogin mobileQr;
+    private final Runnable watch = this::watchDialog;
 
     public static void start(Activity activity, NetdiskLogin.Entry entry, int token, String disk) {
         activity.startActivityForResult(intent(activity, entry, MODE_HOST, disk).putExtra("token", token), REQUEST_CODE);
@@ -79,19 +86,49 @@ public class LoginBridgeActivity extends AppCompatActivity {
             startActivity(intent(this, entry(), MODE_TRIGGER, getIntent().getStringExtra("disk")));
             overridePendingTransition(0, 0);
         } else if (resumeCount == 2) {
-            // TRIGGER 已被站源关掉，接下来二维码应弹在本页上；一直没弹就退出
-            App.post(() -> {
-                if (!dialogShown) finishBridge();
-            }, NO_DIALOG_FINISH_MS);
+            // TRIGGER 已被站源关掉，接下来二维码应弹在本页上：定时检查弹窗窗口在不在
+            watchStart = System.currentTimeMillis();
+            App.post(watch, WATCH_INTERVAL_MS);
+        }
+    }
+
+    /**
+     * 二次开发：原来只靠「本页失去焦点」判断弹窗出现。系统繁忙时弹窗可能在本页拿到焦点之前就弹出，
+     * 收不到失焦事件 → 误判没弹窗 → 3 秒后退出，弹窗跟着本页一起消失（「二维码弹一下就没了」）。
+     * 现在直接查本进程的弹窗窗口：出现过且已关闭才退出；一直没出现才按超时退出。
+     */
+    private void watchDialog() {
+        if (isFinishing() || isDestroyed()) return;
+        Boolean showing = hasDialogWindow();
+        if (showing == null) showing = !hasWindowFocus(); // API 29 以下查不了窗口，退回看焦点
+        if (showing) {
+            dialogShown = true;
+        } else if (dialogShown || System.currentTimeMillis() - watchStart >= NO_DIALOG_FINISH_MS) {
+            finishBridge();
+            return;
+        }
+        App.post(watch, WATCH_INTERVAL_MS);
+    }
+
+    /** 本进程里有没有正在显示的弹窗（Dialog 的窗口类型是 TYPE_APPLICATION，界面本身是 TYPE_BASE_APPLICATION）；查不了返回 null */
+    private Boolean hasDialogWindow() {
+        if (Build.VERSION.SDK_INT < 29) return null;
+        try {
+            for (View root : WindowInspector.getGlobalWindowViews()) {
+                if (!root.isAttachedToWindow() || root.getVisibility() != View.VISIBLE) continue;
+                if (root.getLayoutParams() instanceof WindowManager.LayoutParams lp && lp.type == WindowManager.LayoutParams.TYPE_APPLICATION) return true;
+            }
+            return false;
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        // HOST 要等 TRIGGER 关掉后（第二次 resume）才算；TRIGGER 发起请求后就算（有的站源走 action，把码直接弹在 TRIGGER 上）
-        boolean watching = isHost() ? resumeCount >= 2 : resumeCount >= 1;
-        if (!watching) return;
+        // HOST 由 watchDialog 定时判断；TRIGGER 发起请求后就算（有的站源走 action，把码直接弹在 TRIGGER 上）
+        if (isHost() || resumeCount < 1) return;
         if (!hasFocus) dialogShown = true;    // 二维码窗口弹出，焦点被它拿走
         else if (dialogShown) finishBridge(); // 二维码窗口关掉，焦点回到本页 → 退出
     }
@@ -117,6 +154,7 @@ public class LoginBridgeActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        App.removeCallbacks(watch);
         mobileQr.stop();
         super.onDestroy();
     }

@@ -1,4 +1,20 @@
 <resources>
+    <string name="control_section_speed">播放速度</string>
+    <string name="control_section_scale">画面比例</string>
+    <string name="control_section_track">字幕与音轨</string>
+    <string name="control_section_more">更多</string>
+    <string name="control_danmaku_setting">弹幕</string>
+    <string name="control_speed_normal">正常</string>
+    <string name="control_repeat">循环播放</string>
+    <string name="control_timer">定时关闭</string>
+    <string name="danmaku_quick_title">弹幕设置</string>
+    <string name="danmaku_quick_reset">恢复默认</string>
+    <string name="danmaku_quick_more">更多设置</string>
+    <string name="danmaku_quick_opacity">不透明度</string>
+    <string name="danmaku_quick_size">字号</string>
+    <string name="danmaku_quick_speed">弹幕速度</string>
+    <string name="danmaku_quick_area">显示区域</string>
+    <string name="danmaku_quick_block">屏蔽类型</string>
     <string name="live_exit">返回</string>
     <string name="live_error_hint">这个频道暂时播不了，换个频道试试</string>
     <string name="mobile_login_timeout">扫码等待已结束，请重试或到配置中心登录</string>

@@ -38,6 +38,31 @@
         <item name="android:padding">8dp</item>
     </style>
 
+    <!-- 二次开发：播放设置 / 弹幕设置面板的分区标题和档位按钮 -->
+    <style name="ControlSection">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">20dp</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="ControlChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginEnd">8dp</item>
+        <item name="android:minWidth">56dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/shape_accent</item>
+        <item name="android:textColor">@color/selector_control</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="ControlChip.Wrap">
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+
     <style name="ToolbarTextAppearance" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textSize">20sp</item>
         <item name="android:textColor">@color/white</item>

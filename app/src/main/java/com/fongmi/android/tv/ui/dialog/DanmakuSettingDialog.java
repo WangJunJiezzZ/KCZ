@@ -15,12 +15,31 @@ import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Util;
 
+import java.util.function.BiConsumer;
+
 public final class DanmakuSettingDialog {
 
+    /**
+     * 二次开发：简洁版弹幕设置的入口（手机版播放页注册，见 mobile 的 DanmakuQuickDialog）。
+     * 电视版不注册，仍直接打开下面的完整面板；简洁面板里的「更多设置」用 advanced() 打开完整面板。
+     */
+    private static BiConsumer<FragmentActivity, PlayerManager> simpleOpener;
+
     private PlayerManager player;
+    private boolean advanced;
 
     public static DanmakuSettingDialog create() {
         return new DanmakuSettingDialog();
+    }
+
+    public static void setSimpleOpener(BiConsumer<FragmentActivity, PlayerManager> opener) {
+        simpleOpener = opener;
+    }
+
+    /** 跳过简洁面板，直接打开完整设置 */
+    public DanmakuSettingDialog advanced() {
+        this.advanced = true;
+        return this;
     }
 
     private static DialogDanmakuSettingBinding inflate(LayoutInflater inflater, ViewGroup container) {
@@ -33,6 +52,10 @@ public final class DanmakuSettingDialog {
     }
 
     public void show(FragmentActivity activity) {
+        if (!advanced && simpleOpener != null && !Util.isLeanback()) {
+            simpleOpener.accept(activity, player);
+            return;
+        }
         FragmentManager manager = activity.getSupportFragmentManager();
         for (Fragment fragment : manager.getFragments()) if (fragment instanceof BottomSheet || fragment instanceof SideSheet) return;
         if (Util.isFullscreenLand(activity) || Util.isLeanback()) new SideSheet(player).show(manager, null);

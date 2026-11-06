@@ -87,6 +87,8 @@ import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.ui.dialog.CastDialog;
 import com.fongmi.android.tv.ui.dialog.ChapterDialog;
 import com.fongmi.android.tv.ui.dialog.ControlDialog;
+import com.fongmi.android.tv.ui.dialog.DanmakuQuickDialog;
+import com.fongmi.android.tv.ui.dialog.DanmakuSettingDialog;
 import com.fongmi.android.tv.ui.dialog.DanmakuDialog;
 import com.fongmi.android.tv.ui.dialog.EditionDialog;
 import com.fongmi.android.tv.ui.dialog.EpisodeGridDialog;
@@ -297,6 +299,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         super.initView(savedInstanceState);
         ViewCompat.setOnApplyWindowInsetsListener(mBinding.getRoot(), (v, insets) -> setStatusBar(insets));
         mKeyDown = CustomKeyDown.create(this, mBinding.player).halfSide();
+        DanmakuSettingDialog.setSimpleOpener(DanmakuQuickDialog::open); // 手机端弹幕设置先出简洁面板
         mFrameParams = mBinding.video.getLayoutParams();
         mBinding.progressLayout.showContent();
         mBinding.swipeLayout.setEnabled(false);
@@ -1589,12 +1592,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     /**
-     * 二次开发：全屏底部按钮栏精简，去掉 EXO、刷新、重播、循环、字幕、音轨、视轨、片头、片尾；
+     * 二次开发：全屏底部按钮栏精简，去掉 EXO、硬解/软解、刷新、重播、循环、字幕、音轨、视轨、片头、片尾；
      * 视图保留（设置弹窗会读它们的文字/选中状态、点击会转发给它们），只是不显示。
      */
     private void hideFullscreenExtras() {
         var action = mBinding.control.action;
-        for (View view : new View[]{action.player, action.reset, action.replay, action.repeat, action.text, action.audio, action.video, action.opening, action.ending}) view.setVisibility(View.GONE);
+        for (View view : new View[]{action.player, action.decode, action.reset, action.replay, action.repeat, action.text, action.audio, action.video, action.opening, action.ending}) view.setVisibility(View.GONE);
     }
 
     private void setMediaOptionVisible() {

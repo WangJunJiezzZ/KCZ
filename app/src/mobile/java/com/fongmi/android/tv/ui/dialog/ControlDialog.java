@@ -20,11 +20,10 @@ import com.fongmi.android.tv.playback.PlaybackAction;
 import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.setting.SpeedSetting;
 import com.fongmi.android.tv.ui.adapter.ParseAdapter;
+import com.fongmi.android.tv.ui.custom.ChipRow;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.fongmi.android.tv.utils.SliderUtil;
 import com.fongmi.android.tv.utils.Timer;
-import com.google.android.material.slider.Slider;
 
 import java.util.Arrays;
 import java.util.List;
@@ -74,14 +73,15 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
         return binding;
     }
 
+    /** 二次开发：倍速固定档位（参考奈飞/B 站），1.0x 标成「正常」 */
+    private static final float[] SPEEDS = {0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f};
+
     @Override
     protected void initView() {
-        binding.decode.setText(parent.control.action.decode.getText());
         binding.ending.setText(parent.control.action.ending.getText());
         binding.opening.setText(parent.control.action.opening.getText());
         binding.repeat.setSelected(parent.control.action.repeat.isSelected());
         binding.timer.setSelected(Timer.get().isRunning());
-        SpeedSetting.setup(binding.speed);
         setMediaOptionVisible();
         setTrackVisible();
         setScaleText();
@@ -92,20 +92,16 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
     @Override
     protected void initEvent() {
         binding.timer.setOnClickListener(this::onTimer);
-        binding.speed.addOnChangeListener(this::setSpeed);
         for (TextView view : scales) view.setOnClickListener(this::setScale);
         binding.text.setOnClickListener(v -> dismiss(parent.control.action.text));
         binding.audio.setOnClickListener(v -> dismiss(parent.control.action.audio));
         binding.video.setOnClickListener(v -> dismiss(parent.control.action.video));
-        binding.player.setOnClickListener(v -> dismiss(parent.control.action.player));
         binding.danmaku.setOnClickListener(v -> dismiss(parent.control.action.danmaku));
         binding.edition.setOnClickListener(v -> dismiss(parent.control.action.edition));
         binding.chapter.setOnClickListener(v -> dismiss(parent.control.action.chapter));
         binding.repeat.setOnClickListener(v -> active(binding.repeat, parent.control.action.repeat));
-        binding.decode.setOnClickListener(v -> click(binding.decode, parent.control.action.decode));
         binding.ending.setOnClickListener(v -> click(binding.ending, parent.control.action.ending));
         binding.opening.setOnClickListener(v -> click(binding.opening, parent.control.action.opening));
-        binding.player.setOnLongClickListener(v -> longClick(binding.player, parent.control.action.player));
         binding.ending.setOnLongClickListener(v -> longClick(binding.ending, parent.control.action.ending));
         binding.opening.setOnLongClickListener(v -> longClick(binding.opening, parent.control.action.opening));
     }
@@ -115,8 +111,10 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
         dismiss();
     }
 
-    private void setSpeed(@NonNull Slider slider, float value, boolean fromUser) {
-        if (fromUser) SpeedSetting.putPlayback(player.setSpeed(value));
+    private void setSpeed() {
+        String[] labels = new String[SPEEDS.length];
+        for (int i = 0; i < SPEEDS.length; i++) labels[i] = SPEEDS[i] == 1.0f ? getString(R.string.control_speed_normal) : SpeedSetting.format(SPEEDS[i]);
+        ChipRow.single(binding.speed, labels, SPEEDS, player.getSpeed(), value -> SpeedSetting.putPlayback(player.setSpeed(value)));
     }
 
     private void setScaleText() {
@@ -162,9 +160,7 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
     }
 
     public void setPlayer() {
-        SliderUtil.setValue(binding.speed, player.getSpeed());
-        binding.player.setText(parent.control.action.player.getText());
-        binding.decode.setVisibility(parent.control.action.decode.getVisibility());
+        if (player != null) setSpeed();
         binding.danmaku.setVisibility(parent.control.action.danmaku.getVisibility());
     }
 
@@ -176,7 +172,8 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
     public void setTrackVisible() {
         // 二次开发：全屏按钮栏已不放字幕/音轨/视轨，这里改为直接按播放器轨道判断，不再照抄按钮栏的可见性
         if (player != null) PlaybackAction.setTracks(player, binding.text, binding.audio, binding.video);
-        binding.track.setVisibility(binding.text.getVisibility() == View.GONE && binding.audio.getVisibility() == View.GONE && binding.video.getVisibility() == View.GONE ? View.GONE : View.VISIBLE);
+        binding.video.setVisibility(View.GONE); // 视轨（切换画质轨道）很少用到，精简掉
+        binding.track.setVisibility(binding.text.getVisibility() == View.GONE && binding.audio.getVisibility() == View.GONE ? View.GONE : View.VISIBLE);
     }
 
     public void setMediaOptionVisible() {

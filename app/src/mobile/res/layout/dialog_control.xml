@@ -1,36 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 二次开发：参考 B 站 / 奈飞重排播放设置：倍速改固定档位、去掉 EXO 与硬解/软解、分区更少更清楚 -->
 <androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="24dp"
     tools:background="@color/white">
 
     <com.google.android.material.textview.MaterialTextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/control_speed"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp" />
+        style="@style/ControlSection"
+        android:layout_marginTop="12dp"
+        android:text="@string/control_section_speed" />
 
-    <com.google.android.material.slider.Slider
+    <LinearLayout
         android:id="@+id/speed"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="-12dp"
-        android:layout_marginEnd="-12dp"
-        app:tickVisible="false" />
+        android:orientation="horizontal" />
+
+    <com.google.android.material.textview.MaterialTextView
+        style="@style/ControlSection"
+        android:text="@string/control_section_scale" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/scale_0"
+                style="@style/ControlChip"
+                android:tag="0"
+                tools:text="原始" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/scale_1"
+                style="@style/ControlChip"
+                android:tag="1"
+                tools:text="16:9" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/scale_2"
+                style="@style/ControlChip"
+                android:tag="2"
+                tools:text="4:3" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/scale_3"
+                style="@style/ControlChip"
+                android:tag="3"
+                tools:text="填充" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/scale_4"
+                style="@style/ControlChip"
+                android:tag="4"
+                tools:text="裁剪" />
+
+        </androidx.appcompat.widget.LinearLayoutCompat>
+    </HorizontalScrollView>
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/parseText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
+        style="@style/ControlSection"
         android:text="@string/parse"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp"
         android:visibility="gone"
         tools:visibility="visible" />
 
@@ -38,7 +80,6 @@
         android:id="@+id/parse"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="horizontal"
@@ -50,176 +91,9 @@
         tools:visibility="visible" />
 
     <com.google.android.material.textview.MaterialTextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="@string/control_scale"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp" />
-
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fillViewport="true"
-        android:scrollbars="none">
-
-        <androidx.appcompat.widget.LinearLayoutCompat
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/scale_0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:tag="0"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="預設" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/scale_1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:tag="1"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="16:9" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/scale_2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:tag="2"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="4:3" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/scale_3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:tag="3"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="填充" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/scale_4"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/shape_accent"
-                android:tag="4"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="裁剪" />
-
-        </androidx.appcompat.widget.LinearLayoutCompat>
-    </HorizontalScrollView>
-
-    <com.google.android.material.textview.MaterialTextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="8dp"
-        android:text="@string/play"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp" />
-
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fillViewport="true"
-        android:scrollbars="none">
-
-        <androidx.appcompat.widget.LinearLayoutCompat
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/player"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="EXO" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/decode"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="硬解" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/opening"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="片頭" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/ending"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                tools:text="片尾" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/edition"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/shape_accent"
-                android:text="@string/play_edition"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                android:visibility="gone"
-                tools:visibility="visible" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/chapter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/shape_accent"
-                android:text="@string/play_chapter"
-                android:textColor="@color/selector_control"
-                android:textSize="14sp"
-                android:visibility="gone"
-                tools:visibility="visible" />
-
-        </androidx.appcompat.widget.LinearLayoutCompat>
-    </HorizontalScrollView>
-
-    <com.google.android.material.textview.MaterialTextView
         android:id="@+id/track"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="8dp"
-        android:text="@string/control_track"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp"
+        style="@style/ControlSection"
+        android:text="@string/control_section_track"
         android:visibility="gone"
         tools:visibility="visible" />
 
@@ -230,89 +104,78 @@
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/shape_accent"
+            style="@style/ControlChip"
             android:tag="3"
             android:text="@string/play_track_text"
-            android:textColor="@color/selector_control"
-            android:textSize="14sp"
             android:visibility="gone"
             tools:visibility="visible" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/audio"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/shape_accent"
+            style="@style/ControlChip"
             android:tag="1"
             android:text="@string/play_track_audio"
-            android:textColor="@color/selector_control"
-            android:textSize="14sp"
             android:visibility="gone"
             tools:visibility="visible" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/video"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/shape_accent"
+            style="@style/ControlChip"
             android:tag="2"
             android:text="@string/play_track_video"
-            android:textColor="@color/selector_control"
-            android:textSize="14sp"
-            android:visibility="gone"
-            tools:visibility="visible" />
+            android:visibility="gone" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/other"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="8dp"
-        android:text="@string/control_other"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp" />
+        style="@style/ControlSection"
+        android:text="@string/control_section_more" />
 
-    <androidx.appcompat.widget.LinearLayoutCompat
-        android:layout_width="wrap_content"
+    <com.google.android.flexbox.FlexboxLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        app:flexWrap="wrap">
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/danmaku"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/shape_accent"
-            android:text="@string/danmaku"
-            android:textColor="@color/selector_control"
-            android:textSize="14sp"
+            style="@style/ControlChip.Wrap"
+            android:text="@string/control_danmaku_setting"
             android:visibility="gone"
             tools:visibility="visible" />
 
         <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/opening"
+            style="@style/ControlChip.Wrap"
+            tools:text="片头" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/ending"
+            style="@style/ControlChip.Wrap"
+            tools:text="片尾" />
+
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/repeat"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/shape_accent"
-            android:text="@string/play_repeat"
-            android:textColor="@color/selector_control"
-            android:textSize="14sp" />
+            style="@style/ControlChip.Wrap"
+            android:text="@string/control_repeat" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/timer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/shape_accent"
-            android:text="@string/play_timer"
-            android:textColor="@color/selector_control"
-            android:textSize="14sp" />
+            style="@style/ControlChip.Wrap"
+            android:text="@string/control_timer" />
 
-    </androidx.appcompat.widget.LinearLayoutCompat>
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/edition"
+            style="@style/ControlChip.Wrap"
+            android:text="@string/play_edition"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/chapter"
+            style="@style/ControlChip.Wrap"
+            android:text="@string/play_chapter"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+    </com.google.android.flexbox.FlexboxLayout>
 </androidx.appcompat.widget.LinearLayoutCompat>

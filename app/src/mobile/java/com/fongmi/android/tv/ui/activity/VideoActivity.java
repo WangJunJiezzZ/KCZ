@@ -118,6 +118,7 @@ import java.util.HashMap;
 import java.util.Map;
 import com.fongmi.android.tv.utils.NetdiskLogin;
 import com.fongmi.android.tv.utils.NetdiskRank;
+import com.fongmi.android.tv.utils.MobileLoginEntry;
 
 public class VideoActivity extends PlaybackActivity implements Clock.Callback, CustomKeyDown.Listener, ControlDialog.Listener, ParseDialog.Listener, VodPlaybackHost, FlagAdapter.OnClickListener, EpisodeAdapter.OnClickListener, QualityAdapter.OnClickListener, QuickAdapter.OnClickListener, CastDialog.Listener, InfoDialog.Listener {
 
@@ -1236,9 +1237,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
                 postLogin(token, detail, config, () -> showError(msg + "\n" + getString(R.string.netdisk_login_missing)));
                 return;
             }
+            NetdiskLogin.Entry launch = entry;
+            try { launch = MobileLoginEntry.preferred(entry); } catch (Exception ignored) {}
+            NetdiskLogin.Entry login = launch;
             postLogin(token, detail, config, () -> {
-                LoginBridgeActivity.start(this, entry, token);
-                showError(getString(R.string.netdisk_login_waiting, disk));
+                LoginBridgeActivity.start(this, login, token, disk);
+                showError(getString(R.string.mobile_login_waiting, disk));
             });
             for (int i = 0; i < 90; i++) {
                 Thread.sleep(2000);

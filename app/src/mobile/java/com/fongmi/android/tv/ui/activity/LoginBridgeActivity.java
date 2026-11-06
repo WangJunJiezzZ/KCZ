@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.utils.NetdiskLogin;
+import com.fongmi.android.tv.ui.custom.MobileQrLogin;
 
 /**
  * 二次开发：网盘扫码登录的透明垫页（用户看不见，下面的详情页照常显示）。
@@ -31,18 +32,20 @@ public class LoginBridgeActivity extends AppCompatActivity {
 
     private int resumeCount;
     private boolean dialogShown;
+    private MobileQrLogin mobileQr;
 
-    public static void start(Activity activity, NetdiskLogin.Entry entry, int token) {
-        activity.startActivityForResult(intent(activity, entry, MODE_HOST).putExtra("token", token), REQUEST_CODE);
+    public static void start(Activity activity, NetdiskLogin.Entry entry, int token, String disk) {
+        activity.startActivityForResult(intent(activity, entry, MODE_HOST, disk).putExtra("token", token), REQUEST_CODE);
         activity.overridePendingTransition(0, 0);
     }
 
-    private static Intent intent(Activity activity, NetdiskLogin.Entry entry, String mode) {
+    private static Intent intent(Activity activity, NetdiskLogin.Entry entry, String mode, String disk) {
         Intent intent = new Intent(activity, LoginBridgeActivity.class);
         intent.putExtra("mode", mode);
         intent.putExtra("key", entry.siteKey());
         intent.putExtra("id", entry.vodId());
         intent.putExtra("action", entry.action());
+        intent.putExtra("disk", disk);
         return intent;
     }
 
@@ -58,6 +61,8 @@ public class LoginBridgeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (isHost()) setResult(RESULT_OK, new Intent().putExtra("token", getIntent().getIntExtra("token", -1)));
+        mobileQr = new MobileQrLogin(this, getIntent().getStringExtra("disk"));
+        mobileQr.start();
     }
 
     @Override
@@ -71,7 +76,7 @@ public class LoginBridgeActivity extends AppCompatActivity {
     private void onHostResume() {
         if (resumeCount == 1) {
             // 第一次：在自己上面再垫一层 TRIGGER
-            startActivity(intent(this, entry(), MODE_TRIGGER));
+            startActivity(intent(this, entry(), MODE_TRIGGER, getIntent().getStringExtra("disk")));
             overridePendingTransition(0, 0);
         } else if (resumeCount == 2) {
             // TRIGGER 已被站源关掉，接下来二维码应弹在本页上；一直没弹就退出
@@ -108,5 +113,11 @@ public class LoginBridgeActivity extends AppCompatActivity {
         if (isHost()) setResult(RESULT_OK, new Intent().putExtra("token", getIntent().getIntExtra("token", -1)));
         finish();
         overridePendingTransition(0, 0);
+    }
+
+    @Override
+    protected void onDestroy() {
+        mobileQr.stop();
+        super.onDestroy();
     }
 }

@@ -2,4 +2,16 @@
     <string name="mobile_login_timeout">扫码等待已结束，请重试或到配置中心登录</string>
     <string name="mobile_login_failed">扫码登录入口加载失败，请重试或到配置中心登录</string>
     <string name="mobile_login_cancelled">扫码窗口已关闭，尚未确认登录成功，请点击重试</string>
+    <string name="mobile_login_waiting">请完成%1$s网盘登录后返回，确认成功后会重新播放</string>
+    <string name="mobile_login_same_device_hint">无需用另一台手机扫码：打开当前登录链接，在网盘官方页面确认后返回。若网页不支持，请保存二维码，再到网盘 App 的扫一扫中选择相册识别。</string>
+    <string name="mobile_login_album_hint">该入口未提供可直接打开的网页登录链接。可以保存二维码，再到网盘 App 的扫一扫中选择相册识别；相册识别是否支持取决于网盘 App。</string>
+    <string name="mobile_login_open_link">在本机打开登录页</string>
+    <string name="mobile_login_save_qr">保存二维码到相册</string>
+    <string name="mobile_login_other_device">使用其他设备扫码</string>
+    <string name="mobile_login_hide_qr">在本机登录</string>
+    <string name="mobile_login_no_browser">没有找到可打开登录链接的应用，请先保存二维码</string>
+    <string name="mobile_login_qr_saved">已保存到相册，请在网盘 App 的扫一扫中选择相册识别</string>
+    <string name="mobile_login_save_failed">保存失败，请重试</string>
+    <string name="mobile_login_title">登录%1$s网盘</string>
+    <string name="mobile_login_source_hint">请选择登录方式，完成后返回播放器。</string>
 </resources>

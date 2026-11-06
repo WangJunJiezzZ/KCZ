@@ -761,8 +761,10 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             showContent();
         } else if (mPresenter.isDelete()) {
             setHistoryDelete(false);
-        } else if (mBinding.recycler.getSelectedPosition() != 0) {
-            mBinding.recycler.scrollToPosition(0);
+        } else if (mBinding.recycler.hasFocus() && mBinding.recycler.getSelectedPosition() > getFirstRowIndex()) {
+            // 二次开发：先回到第一行再退出。原版判断「位置 != 0」，奈飞改版后第 0 项是不能获得焦点的行标题，
+            // 位置永远不是 0，返回键就一直在「回到顶部」、退不出去；焦点在左侧导航 / 右上角源名时直接退出
+            mBinding.recycler.setSelectedPositionSmooth(getFirstRowIndex());
         } else {
             if (PlaybackService.isRunning()) Util.moveToBackground(this);
             else super.onBackInvoked();

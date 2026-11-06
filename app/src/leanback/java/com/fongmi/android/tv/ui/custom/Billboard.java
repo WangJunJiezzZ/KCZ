@@ -37,8 +37,9 @@ import java.util.List;
  * 焦点停在哪部片子，就把它的片名 / 信息 / 简介和全屏剧照显示出来：
  * - 剧照优先级：源提供的横版剧照 → TMDB 剧照 → 竖版海报（右侧清晰海报卡片 + 模糊海报底色）
  * - 新旧剧照交叉淡化 + 轻微推镜；焦点快速移动时只加载最后停留的那一部
- * - 二次开发：剧照不再铺满全屏，只占右上角一块 16:9 区域（stage，宽度为屏幕的 85%），
- *   左边、底部渐隐到黑色；卡片行底下是黑底，卡片不再和背景剧照叠在一起
+ * - 二次开发：剧照不再铺满全屏，只占右上角一条横幅（stage）：宽度为屏幕的 85%，高度只到卡片行上方，
+ *   左边、底部渐隐到黑色；卡片行底下是黑底，卡片不再和背景剧照叠在一起。
+ *   （保持 16:9 时 85% 宽 = 85% 高，几乎铺满全屏，所以改成横幅、裁掉剧照上下）
  */
 public class Billboard {
 
@@ -52,6 +53,8 @@ public class Billboard {
 
     /** 剧照区宽度占屏幕的比例（高度按 16:9 算，不裁切、不放大） */
     private static final float STAGE_WIDTH = 0.85f;
+    /** 剧照区高度：内容行从 236dp 开始，第一行标题约 30dp，剧照底边落在第一行卡片顶上 */
+    private static final int STAGE_HEIGHT_DP = 276;
     /** 往下翻到后面几行时剧照区的透明度（注意力放在卡片上） */
     private static final float STAGE_DIM_ALPHA = 0.35f;
 
@@ -86,10 +89,10 @@ public class Billboard {
         fitStage();
     }
 
-    /** 剧照区：屏幕宽度的 85%、16:9；左边渐隐占 45% 宽度（片名、简介压在上面），底部渐隐占 40% 高度（太高会把人脸也压暗，整张图发灰） */
+    /** 剧照区：屏幕宽度的 85% × 到卡片行上方；左边渐隐占 45% 宽度（片名、简介压在上面），底部渐隐占 40% 高度（太高会把人脸也压暗） */
     private void fitStage() {
         int width = Math.round(ResUtil.getScreenWidth() * STAGE_WIDTH);
-        int height = width * 9 / 16;
+        int height = Math.min(ResUtil.dp2px(STAGE_HEIGHT_DP), width * 9 / 16);
         setSize(stage, width, height);
         setSize(stage.findViewById(com.fongmi.android.tv.R.id.stageFadeLeft), Math.round(width * 0.45f), height);
         setSize(stage.findViewById(com.fongmi.android.tv.R.id.stageFadeBottom), width, Math.round(height * 0.4f));

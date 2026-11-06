@@ -14,7 +14,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- 二次开发：剧照只占右上角一块 16:9 区域（宽度为屏幕 85%，Billboard 里按屏幕算尺寸），
+        <!-- 二次开发：剧照只占右上角一条横幅（宽度为屏幕 85%，高度到卡片行上方，Billboard 里按屏幕算尺寸），
              左边和底部渐隐到黑色；卡片行底下是黑底，卡片不再压在剧照上 -->
         <FrameLayout
             android:id="@+id/stage"

@@ -37,7 +37,19 @@ class VodFallbackPolicy {
         fallbackToNextSource(true);
     }
 
+    /** 二次开发：后台自动搜（只填底部换源列表）时用严格匹配，免得混进「《片名》解说/歌曲」之类的无关结果 */
+    private boolean strictMatch;
+
     void search(String keyword, boolean autoFallback) {
+        search(keyword, autoFallback, false);
+    }
+
+    void searchQuietly(String keyword) {
+        search(keyword, false, true);
+    }
+
+    private void search(String keyword, boolean autoFallback, boolean strict) {
+        strictMatch = strict;
         state.getSources().clear();
         state.setSearchKeyword(keyword);
         state.setAutoFallback(autoFallback);
@@ -110,6 +122,21 @@ class VodFallbackPolicy {
         if (host.getVodId().equals(item.getId())) return true;
         if (state.hasFailedId(item.getId())) return true;
         if (state.isAutoFallback()) return !item.getName().equals(state.getSearchKeyword());
+        if (strictMatch) return !isSameTitle(item.getName(), state.getSearchKeyword());
         return !item.getName().contains(state.getSearchKeyword());
+    }
+
+    /** 去掉书名号、标点、空格后片名相同，或只多几个字（如「（85集）」「4K」） */
+    static boolean isSameTitle(String name, String keyword) {
+        String n = normalize(name);
+        String k = normalize(keyword);
+        return !k.isEmpty() && n.startsWith(k) && n.length() - k.length() <= 6;
+    }
+
+    private static String normalize(String text) {
+        if (text == null) return "";
+        StringBuilder sb = new StringBuilder(text.length());
+        text.codePoints().filter(Character::isLetterOrDigit).forEach(sb::appendCodePoint);
+        return sb.toString().toLowerCase(java.util.Locale.ROOT);
     }
 }

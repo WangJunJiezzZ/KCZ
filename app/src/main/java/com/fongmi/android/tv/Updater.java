@@ -63,8 +63,10 @@ public class Updater implements Download.Callback, UpdateListener {
             String desc = object.optString("desc");
             int code = object.optInt("code");
             if (code <= BuildConfig.VERSION_CODE) return;
-            // 二次开发：JSON 里可以用 "apk" 字段指定下载地址，换下载服务器不用重新打包
-            download = Download.create(getApk(object.optString("apk")), getFile());
+            // 二次开发：JSON 里可以用 "apk" 字段指定下载目录（后面自动拼「mobile-arm64_v8a.apk」），
+            // 或用 "url" 字段给完整下载直链（网盘直链常带参数，原样使用）；换下载服务器不用重新打包
+            String url = object.optString("url");
+            download = Download.create(url.isEmpty() ? getApk(object.optString("apk")) : url, getFile());
             App.post(() -> show(activity, name, desc));
         } catch (Exception e) {
             e.printStackTrace();

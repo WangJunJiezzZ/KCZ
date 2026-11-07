@@ -79,6 +79,11 @@ public interface VodPlaybackHost {
         return false;
     }
 
+    /** 二次开发：详情加载后是否在后台全站搜同名影片，填充底部换源列表（只列出，不自动切换）。手机版开启，电视版保持原样 */
+    default boolean searchOtherSources() {
+        return false;
+    }
+
     void prepareSource(Vod item);
 
     void stopPlaybackForRefresh();

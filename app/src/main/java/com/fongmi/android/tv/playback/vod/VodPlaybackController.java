@@ -259,13 +259,25 @@ public class VodPlaybackController {
 
     public void playbackError(String msg) {
         clearPreload();
-        host.resetPlaybackForError(msg);
         // 二次开发：网盘线路失败不自动换线，交给界面弹对应网盘的扫码登录（没登录就不该切走）
         String disk = NetdiskLogin.detect(msg);
         if (disk != null) NetdiskRank.markBad(disk); // 明确报没登录 / Cookie 失效：这个网盘暂时不能用
-        if (disk == null && state.hasFlags()) disk = NetdiskLogin.diskOfFlag(state.getFlag().getFlag());
+        String flagDisk = state.hasFlags() ? NetdiskLogin.diskOfFlag(state.getFlag().getFlag()) : null;
+        // 线路是网盘、但错误没说没登录时：只有像 Cookie 失效的 HTTP 错误才当没登录处理。
+        // 原来一律弹扫码：文件本身坏了（如 Container Malformed）也让人登录，登录完还是播不了
+        if (disk == null && flagDisk != null && isAuthLikeError(msg)) disk = flagDisk;
+        boolean fileError = disk == null && flagDisk != null;
+        host.resetPlaybackForError(fileError ? msg + "\n" + FILE_ERROR_HINT : msg);
         if (disk != null && host.handleNetdiskError(disk, msg)) return;
         fallbackPolicy.playbackError();
+    }
+
+    private static final String FILE_ERROR_HINT = "这个文件播放失败，换条线路或换一集试试";
+
+    /** 播放器层面的 HTTP 错误（网盘 Cookie 失效时常见 401/403），可能是登录问题 */
+    private static boolean isAuthLikeError(String msg) {
+        if (msg == null) return false;
+        return msg.contains("Bad HTTP Status") || msg.contains("401") || msg.contains("403");
     }
 
     public void playbackEnded() {
@@ -441,6 +453,17 @@ public class VodPlaybackController {
         preferUsableNetdisk(history);
         if (!state.hasFlags()) fallbackPolicy.emptyFlag();
         else if (!startLineProbe(activeRequest, history, fresh)) restoreDetail(activeRequest, history);
+        searchOtherSources();
+    }
+
+    /**
+     * 二次开发：从观看记录、收藏、普通站点（如首页短剧行）进来时原本不会搜索，底部换源列表一直是空的。
+     * 这部影片还没搜过（首页索引站进来的自动找片已经搜过）就在后台搜一次，只填列表不切换。
+     */
+    private void searchOtherSources() {
+        if (!host.searchOtherSources() || !state.getSearchKeyword().isEmpty() || state.hasSources()) return;
+        String name = host.getVodName();
+        if (!name.isEmpty()) fallbackPolicy.searchQuietly(name);
     }
 
     /**
